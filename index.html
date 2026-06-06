@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>日本大学数学学伴雷达</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">StudyGuard Japan Math</p>
+      <h1>日本大学数学学伴雷达</h1>
+    </div>
+    <div class="status-strip" aria-live="polite">
+      <span id="wordCount">0 字</span>
+      <span id="riskBadge">待分析</span>
+      <span id="examBadge">7 天复习</span>
+    </div>
+  </header>
+
+  <nav class="quick-nav" aria-label="页面快捷导航">
+    <a href="#inputSection">材料</a>
+    <a href="#termsSection">术语</a>
+    <a href="#formulaSection">公式</a>
+    <a href="#domesticSection">同济</a>
+    <a href="#proofSection">证明</a>
+    <a href="#examSection">题库</a>
+  </nav>
+
+  <main class="workspace">
+    <section id="inputSection" class="panel input-panel">
+      <div class="panel-head">
+        <div>
+          <p class="label">讲义 / ノート</p>
+          <h2>粘贴日本大学微积分或线性代数材料</h2>
+        </div>
+        <button id="sampleBtn" type="button" title="填入示例">示例</button>
+      </div>
+
+      <textarea id="sourceText" spellcheck="false" placeholder="例如：微分積分学I、線形代数学I、極限、導関数、固有値、行列式、一次独立……"></textarea>
+
+      <div class="control-row">
+        <label>
+          考试日期
+          <input id="examDate" type="date">
+        </label>
+        <label>
+          每天可学
+          <select id="studyMinutes">
+            <option value="30">30 分钟</option>
+            <option value="45" selected>45 分钟</option>
+            <option value="60">60 分钟</option>
+            <option value="90">90 分钟</option>
+          </select>
+        </label>
+      </div>
+
+      <button id="analyzeBtn" class="primary" type="button">生成学习雷达</button>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <p class="label">理解度</p>
+          <h2>知识点地图</h2>
+        </div>
+        <div class="score-ring" id="readinessScore">--</div>
+      </div>
+
+      <div id="topicCloud" class="topic-cloud empty">等待材料输入</div>
+
+      <div class="split">
+        <article>
+          <p class="label">重点摘要</p>
+          <ul id="summaryList" class="clean-list"></ul>
+        </article>
+        <article>
+          <p class="label">薄弱风险</p>
+          <ul id="weakList" class="clean-list"></ul>
+        </article>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <p class="label">诚信与质量</p>
+          <h2>AI 使用风险检查</h2>
+        </div>
+        <meter id="riskMeter" min="0" max="100" value="0"></meter>
+      </div>
+
+      <div id="riskCards" class="risk-grid"></div>
+
+      <div class="coach-box">
+        <p class="label">追问式学习</p>
+        <p id="coachPrompt">输入材料后，我会把“直接要答案”改成更适合大学数学的追问。</p>
+      </div>
+    </section>
+
+    <section id="termsSection" class="panel wide">
+      <div class="panel-head">
+        <div>
+          <p class="label">日语概念对照</p>
+          <h2>日本大学数学术语 → 中文理解</h2>
+        </div>
+        <div class="lookup-tools">
+          <select id="subjectFilter" title="筛选科目">
+            <option value="all">全部</option>
+            <option value="calculus">微积分</option>
+            <option value="linear">线性代数</option>
+          </select>
+          <input id="termSearch" type="search" placeholder="搜索：導関数 / 固有値 / 极限">
+        </div>
+      </div>
+      <div id="termGrid" class="term-grid"></div>
+    </section>
+
+    <section class="panel wide">
+      <div class="panel-head">
+        <div>
+          <p class="label">课程对照</p>
+          <h2>日本课程名对应国内课程</h2>
+        </div>
+      </div>
+      <div id="courseMap" class="course-map"></div>
+    </section>
+
+    <section id="formulaSection" class="panel wide">
+      <div class="panel-head">
+        <div>
+          <p class="label">教材公式・定理</p>
+          <h2>按指定教材整理章节重点</h2>
+        </div>
+        <div class="lookup-tools">
+          <select id="textbookFilter" title="选择教材">
+            <option value="calculus">微积分 第3版</option>
+            <option value="linear">入门线性代数</option>
+          </select>
+          <select id="chapterFilter" title="选择章节"></select>
+        </div>
+      </div>
+      <div class="book-note" id="bookNote"></div>
+      <div class="formula-layout">
+        <article>
+          <p class="label">公式</p>
+          <div id="formulaList" class="formula-list"></div>
+        </article>
+        <article>
+          <p class="label">定理</p>
+          <div id="theoremList" class="formula-list"></div>
+        </article>
+      </div>
+    </section>
+
+    <section id="domesticSection" class="panel wide">
+      <div class="panel-head">
+        <div>
+          <p class="label">国内教材小节对照</p>
+          <h2>日本章节 → 同济版高等数学 / 线性代数</h2>
+        </div>
+        <select id="domesticFilter" title="选择对照科目">
+          <option value="calculus">微积分</option>
+          <option value="linear">线性代数</option>
+        </select>
+      </div>
+      <div class="book-note">
+        <strong>说明</strong>
+        <span>这里按同济版《高等数学》和同济版《线性代数》的常见章节体系做小节级对照；具体版次页码可按你手上的书微调。</span>
+      </div>
+      <div id="domesticMap" class="domestic-map"></div>
+    </section>
+
+    <section class="panel wide">
+      <div class="panel-head">
+        <div>
+          <p class="label">推荐课程</p>
+          <h2>B站课程怎么配合日本教材听</h2>
+        </div>
+        <select id="courseFilter" title="选择推荐科目">
+          <option value="calculus">微积分 / 高数</option>
+          <option value="linear">线性代数</option>
+        </select>
+      </div>
+      <div class="book-note">
+        <strong>主推荐：宋浩老师 2.0</strong>
+        <span>先用日本讲义定位术语和题型，再听中文课补概念，最后回到日语课本做例题和证明。</span>
+      </div>
+      <div id="courseGuide" class="course-guide"></div>
+    </section>
+
+    <section id="proofSection" class="panel wide">
+      <div class="panel-head">
+        <div>
+          <p class="label">证明题训练</p>
+          <h2>每章常见证明过程与练习题</h2>
+        </div>
+        <div class="lookup-tools">
+          <select id="proofSubjectFilter" title="选择科目">
+            <option value="calculus">微积分</option>
+            <option value="linear">线性代数</option>
+          </select>
+          <select id="proofChapterFilter" title="选择章节"></select>
+        </div>
+      </div>
+      <div id="proofTrainer" class="proof-trainer"></div>
+    </section>
+
+    <section id="examSection" class="panel wide">
+      <div class="panel-head">
+        <div>
+          <p class="label">考试题库</p>
+          <h2>计算题・证明题・综合题</h2>
+        </div>
+        <div class="lookup-tools">
+          <select id="examSubjectFilter" title="选择科目">
+            <option value="calculus">微积分</option>
+            <option value="linear">线性代数</option>
+          </select>
+          <select id="examChapterFilter" title="选择章节"></select>
+          <select id="examTypeFilter" title="选择题型">
+            <option value="all">全部题型</option>
+            <option value="计算题">计算题</option>
+            <option value="证明题">证明题</option>
+            <option value="综合题">综合题</option>
+          </select>
+        </div>
+      </div>
+      <div class="book-note">
+        <strong>用法</strong>
+        <span>先独立做题；卡住时只点“看提示”；做完后再点“看详细答案”核对每一步。</span>
+      </div>
+      <div id="examBank" class="exam-bank"></div>
+    </section>
+
+    <section class="panel wide">
+      <div class="panel-head">
+        <div>
+          <p class="label">复习计划</p>
+          <h2>按考试时间倒推</h2>
+        </div>
+      </div>
+      <div id="planGrid" class="plan-grid"></div>
+    </section>
+
+    <section class="panel wide">
+      <div class="panel-head">
+        <div>
+          <p class="label">自测</p>
+          <h2>5 道大学数学小测验</h2>
+        </div>
+        <button id="shuffleQuiz" type="button" title="重新出题">换一组</button>
+      </div>
+      <div id="quizList" class="quiz-list"></div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
