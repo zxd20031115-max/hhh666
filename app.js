@@ -1865,6 +1865,7 @@ const graphExamples = [
 let graphExampleIndex = 0;
 const graphColors = ["#18736b", "#2e65b8", "#c85b2b", "#7b5fb8", "#b84d68", "#6f7d1b"];
 let graphState = null;
+let graphDrag = null;
 
 function compileExpression(expr) {
   const normalized = expr
@@ -2126,6 +2127,32 @@ function zoomGraph(factor) {
   drawGraph();
 }
 
+function zoomGraphAt(clientX, factor) {
+  if (!graphState) {
+    zoomGraph(factor);
+    return;
+  }
+  const rect = functionCanvas.getBoundingClientRect();
+  const sx = clientX - rect.left;
+  const { pad, cssWidth, xMin, xMax } = graphState;
+  const ratio = Math.min(1, Math.max(0, (sx - pad.left) / (cssWidth - pad.left - pad.right)));
+  const focus = xMin + ratio * (xMax - xMin);
+  const newMin = focus - (focus - xMin) * factor;
+  const newMax = focus + (xMax - focus) * factor;
+  xMinInput.value = Number(newMin.toFixed(4));
+  xMaxInput.value = Number(newMax.toFixed(4));
+  drawGraph();
+}
+
+function panGraphByPixels(deltaPx) {
+  if (!graphState) return;
+  const { xMin, xMax, plotW } = graphState;
+  const dx = -deltaPx / plotW * (xMax - xMin);
+  xMinInput.value = Number((xMin + dx).toFixed(4));
+  xMaxInput.value = Number((xMax + dx).toFixed(4));
+  drawGraph();
+}
+
 function resetGraphView() {
   const item = graphExamples[graphExampleIndex] || graphExamples[0];
   xMinInput.value = item.range[0];
@@ -2152,6 +2179,31 @@ function showGraphTooltip(event) {
   graphTooltip.style.left = `${Math.min(sx + 14, rect.width - 170)}px`;
   graphTooltip.style.top = `${Math.max(8, sy - 16)}px`;
   graphTooltip.classList.add("show");
+}
+
+function startGraphDrag(event) {
+  if (!graphState) return;
+  graphDrag = {
+    startX: event.clientX,
+    xMin: graphState.xMin,
+    xMax: graphState.xMax
+  };
+  functionCanvas.classList.add("dragging");
+}
+
+function moveGraphDrag(event) {
+  if (!graphDrag || !graphState) return;
+  const deltaPx = event.clientX - graphDrag.startX;
+  const dx = -deltaPx / graphState.plotW * (graphDrag.xMax - graphDrag.xMin);
+  xMinInput.value = Number((graphDrag.xMin + dx).toFixed(4));
+  xMaxInput.value = Number((graphDrag.xMax + dx).toFixed(4));
+  drawGraph();
+  showGraphTooltip(event);
+}
+
+function endGraphDrag() {
+  graphDrag = null;
+  functionCanvas.classList.remove("dragging");
 }
 
 function renderDomesticMap() {
@@ -2390,6 +2442,27 @@ resetViewBtn.addEventListener("click", resetGraphView);
 functionCanvas.addEventListener("mousemove", showGraphTooltip);
 functionCanvas.addEventListener("mouseleave", () => graphTooltip.classList.remove("show"));
 functionCanvas.addEventListener("click", showGraphTooltip);
+functionCanvas.addEventListener("wheel", event => {
+  event.preventDefault();
+  zoomGraphAt(event.clientX, event.deltaY < 0 ? 0.78 : 1.28);
+  showGraphTooltip(event);
+}, { passive: false });
+functionCanvas.addEventListener("mousedown", event => {
+  event.preventDefault();
+  startGraphDrag(event);
+});
+window.addEventListener("mousemove", moveGraphDrag);
+window.addEventListener("mouseup", endGraphDrag);
+functionCanvas.addEventListener("touchstart", event => {
+  if (event.touches.length !== 1) return;
+  const touch = event.touches[0];
+  startGraphDrag(touch);
+}, { passive: true });
+functionCanvas.addEventListener("touchmove", event => {
+  if (event.touches.length !== 1) return;
+  moveGraphDrag(event.touches[0]);
+}, { passive: true });
+functionCanvas.addEventListener("touchend", endGraphDrag);
 window.addEventListener("resize", drawGraph);
 
 setDefaultDate();
