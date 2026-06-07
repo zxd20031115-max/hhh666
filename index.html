@@ -23,6 +23,7 @@
     <a href="#inputSection">材料</a>
     <a href="#termsSection">术语</a>
     <a href="#formulaSection">公式</a>
+    <a href="#graphSection">图像</a>
     <a href="#domesticSection">同济</a>
     <a href="#proofSection">证明</a>
     <a href="#examSection">题库</a>
@@ -151,6 +152,56 @@
           <p class="label">定理</p>
           <div id="theoremList" class="formula-list"></div>
         </article>
+      </div>
+    </section>
+
+    <section id="graphSection" class="panel wide">
+      <div class="panel-head">
+        <div>
+          <p class="label">函数图像</p>
+          <h2>导数切线・导函数・定积分面积</h2>
+        </div>
+        <button id="plotExampleBtn" type="button">换示例</button>
+      </div>
+      <div class="graph-tool">
+        <div class="graph-controls">
+          <label>
+            函数 f(x)
+            <input id="functionInput" type="text" value="x^3 - 3*x" spellcheck="false">
+          </label>
+          <div class="control-row compact-controls">
+            <label>
+              x 最小
+              <input id="xMinInput" type="number" value="-4" step="0.5">
+            </label>
+            <label>
+              x 最大
+              <input id="xMaxInput" type="number" value="4" step="0.5">
+            </label>
+          </div>
+          <div class="control-row compact-controls">
+            <label>
+              切线 x₀
+              <input id="tangentInput" type="number" value="1" step="0.1">
+            </label>
+            <label>
+              积分区间
+              <input id="integralInput" type="text" value="-1,2" spellcheck="false">
+            </label>
+          </div>
+          <div class="toggle-grid">
+            <label><input id="showDerivative" type="checkbox" checked> 导函数 f′(x)</label>
+            <label><input id="showTangent" type="checkbox" checked> 切线</label>
+            <label><input id="showIntegral" type="checkbox" checked> 定积分阴影</label>
+            <label><input id="showCritical" type="checkbox" checked> 零点/极值</label>
+          </div>
+          <button id="plotBtn" class="primary" type="button">绘制图像</button>
+          <p class="graph-help">可用：sin(x), cos(x), tan(x), exp(x), log(x), sqrt(x), abs(x), x^2。</p>
+        </div>
+        <div class="graph-stage">
+          <canvas id="functionCanvas" width="980" height="560"></canvas>
+          <div id="graphReadout" class="graph-readout"></div>
+        </div>
       </div>
     </section>
 

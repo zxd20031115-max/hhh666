@@ -444,6 +444,87 @@ meter {
   line-height: 1.55;
 }
 
+.graph-tool {
+  display: grid;
+  grid-template-columns: minmax(260px, .78fr) minmax(420px, 1.42fr);
+  gap: 14px;
+}
+
+.graph-controls {
+  display: grid;
+  gap: 12px;
+}
+
+.compact-controls {
+  margin: 0;
+}
+
+.toggle-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.toggle-grid label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.toggle-grid input {
+  min-height: auto;
+}
+
+.graph-help {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+  font-size: 13px;
+}
+
+.graph-stage {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+}
+
+#functionCanvas {
+  width: 100%;
+  min-height: 340px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.graph-readout {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.graph-readout span {
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfe;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.graph-readout b {
+  color: var(--accent);
+}
+
+.danger-text {
+  color: var(--danger);
+}
+
 .formula-card p,
 .mathline {
   font-family: "Cambria Math", "Times New Roman", "Microsoft YaHei", serif;
@@ -994,6 +1075,14 @@ meter {
   .proof-questions {
     grid-template-columns: repeat(2, minmax(220px, 1fr));
   }
+
+  .graph-tool {
+    grid-template-columns: 1fr;
+  }
+
+  .graph-readout {
+    grid-template-columns: repeat(2, minmax(140px, 1fr));
+  }
 }
 
 @media (max-width: 860px) {
@@ -1005,6 +1094,7 @@ meter {
   .workspace,
   .split,
   .control-row,
+  .graph-tool,
   .guide-columns,
   .proof-layout,
   .quiz-list,
@@ -1036,6 +1126,11 @@ meter {
 
   .lookup-tools input {
     width: 100%;
+  }
+
+  .toggle-grid,
+  .graph-readout {
+    grid-template-columns: 1fr;
   }
 
   .lookup-tools select,
@@ -1157,5 +1252,9 @@ meter {
 
   .mini-plot svg {
     height: 120px;
+  }
+
+  #functionCanvas {
+    min-height: 300px;
   }
 }

@@ -15,6 +15,17 @@ const proofChapterFilter = document.querySelector("#proofChapterFilter");
 const examSubjectFilter = document.querySelector("#examSubjectFilter");
 const examChapterFilter = document.querySelector("#examChapterFilter");
 const examTypeFilter = document.querySelector("#examTypeFilter");
+const functionInput = document.querySelector("#functionInput");
+const xMinInput = document.querySelector("#xMinInput");
+const xMaxInput = document.querySelector("#xMaxInput");
+const tangentInput = document.querySelector("#tangentInput");
+const integralInput = document.querySelector("#integralInput");
+const showDerivative = document.querySelector("#showDerivative");
+const showTangent = document.querySelector("#showTangent");
+const showIntegral = document.querySelector("#showIntegral");
+const showCritical = document.querySelector("#showCritical");
+const plotBtn = document.querySelector("#plotBtn");
+const plotExampleBtn = document.querySelector("#plotExampleBtn");
 
 const wordCount = document.querySelector("#wordCount");
 const riskBadge = document.querySelector("#riskBadge");
@@ -35,6 +46,8 @@ const domesticMap = document.querySelector("#domesticMap");
 const courseGuide = document.querySelector("#courseGuide");
 const proofTrainer = document.querySelector("#proofTrainer");
 const examBank = document.querySelector("#examBank");
+const functionCanvas = document.querySelector("#functionCanvas");
+const graphReadout = document.querySelector("#graphReadout");
 const planGrid = document.querySelector("#planGrid");
 const quizList = document.querySelector("#quizList");
 
@@ -1665,6 +1678,248 @@ function renderBookChapter() {
   });
 }
 
+const graphExamples = [
+  { expr: "x^3 - 3*x", range: [-4, 4], tangent: 1, integral: "-1,2" },
+  { expr: "sin(x)", range: [-6.28, 6.28], tangent: 0.8, integral: "0,3.14" },
+  { expr: "x^2", range: [-4, 4], tangent: 1.5, integral: "0,2" },
+  { expr: "exp(-x^2)", range: [-3, 3], tangent: 1, integral: "-1,1" },
+  { expr: "log(x)", range: [0.2, 5], tangent: 2, integral: "1,4" }
+];
+let graphExampleIndex = 0;
+
+function compileExpression(expr) {
+  const normalized = expr
+    .replace(/\s+/g, "")
+    .replace(/π/g, "pi")
+    .replace(/\^/g, "**")
+    .replace(/\b(sin|cos|tan|asin|acos|atan|sqrt|abs|log|ln|exp|pow|min|max|floor|ceil)\b/g, name => name === "ln" ? "Math.log" : `Math.${name}`)
+    .replace(/\bpi\b/gi, "Math.PI")
+    .replace(/\be\b/g, "Math.E");
+  if (!/^[0-9xX+\-*/().,A-Za-z_]*$/.test(normalized)) throw new Error("表达式里有暂不支持的字符。");
+  return new Function("x", `"use strict"; return ${normalized.replace(/\bX\b/g, "x")};`);
+}
+
+function numericalDerivative(fn, x) {
+  const h = Math.max(1e-5, Math.abs(x) * 1e-5);
+  return (fn(x + h) - fn(x - h)) / (2 * h);
+}
+
+function integrateSimpson(fn, a, b) {
+  const n = 240;
+  const start = Math.min(a, b);
+  const end = Math.max(a, b);
+  const h = (end - start) / n;
+  let total = fn(start) + fn(end);
+  for (let i = 1; i < n; i += 1) total += fn(start + i * h) * (i % 2 === 0 ? 2 : 4);
+  const value = total * h / 3;
+  return a <= b ? value : -value;
+}
+
+function sampleFunction(fn, xMin, xMax, count = 700) {
+  const points = [];
+  for (let i = 0; i <= count; i += 1) {
+    const x = xMin + (xMax - xMin) * i / count;
+    const y = fn(x);
+    if (Number.isFinite(y)) points.push({ x, y });
+  }
+  return points;
+}
+
+function findGraphFeatures(fn, xMin, xMax) {
+  const roots = [];
+  const extrema = [];
+  const samples = sampleFunction(fn, xMin, xMax, 260);
+  for (let i = 1; i < samples.length; i += 1) {
+    if (samples[i - 1].y * samples[i].y < 0) roots.push((samples[i - 1].x + samples[i].x) / 2);
+  }
+  for (let i = 2; i < samples.length - 2; i += 1) {
+    const left = numericalDerivative(fn, samples[i - 1].x);
+    const right = numericalDerivative(fn, samples[i + 1].x);
+    if (Number.isFinite(left) && Number.isFinite(right) && left * right < 0) extrema.push(samples[i].x);
+  }
+  return {
+    roots: roots.slice(0, 5),
+    extrema: extrema.filter((x, index, arr) => index === 0 || Math.abs(x - arr[index - 1]) > (xMax - xMin) / 20).slice(0, 5)
+  };
+}
+
+function drawPath(ctx, points, toScreen, color, width = 3, dash = []) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.setLineDash(dash);
+  ctx.beginPath();
+  let started = false;
+  points.forEach(point => {
+    const p = toScreen(point.x, point.y);
+    if (!started) {
+      ctx.moveTo(p.sx, p.sy);
+      started = true;
+    } else {
+      ctx.lineTo(p.sx, p.sy);
+    }
+  });
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawGraph() {
+  const canvas = functionCanvas;
+  const ctx = canvas.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  const cssWidth = canvas.clientWidth || 900;
+  const cssHeight = Math.max(340, Math.min(560, cssWidth * 0.58));
+  canvas.style.height = `${cssHeight}px`;
+  canvas.width = Math.floor(cssWidth * dpr);
+  canvas.height = Math.floor(cssHeight * dpr);
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, cssWidth, cssHeight);
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, cssWidth, cssHeight);
+
+  let fn;
+  try {
+    fn = compileExpression(functionInput.value);
+  } catch (error) {
+    graphReadout.innerHTML = `<span class="danger-text">${error.message}</span>`;
+    return;
+  }
+
+  let xMin = Number(xMinInput.value);
+  let xMax = Number(xMaxInput.value);
+  if (!Number.isFinite(xMin) || !Number.isFinite(xMax) || xMin >= xMax) {
+    xMin = -4;
+    xMax = 4;
+  }
+  const points = sampleFunction(fn, xMin, xMax);
+  const derivativePoints = sampleFunction(x => numericalDerivative(fn, x), xMin, xMax);
+  const allY = [...points, ...(showDerivative.checked ? derivativePoints : [])].map(point => point.y);
+  let yMin = Math.min(...allY);
+  let yMax = Math.max(...allY);
+  if (!Number.isFinite(yMin) || !Number.isFinite(yMax) || yMin === yMax) {
+    yMin = -5;
+    yMax = 5;
+  }
+  const paddingY = (yMax - yMin) * 0.14 || 1;
+  yMin -= paddingY;
+  yMax += paddingY;
+
+  const pad = { left: 46, right: 18, top: 18, bottom: 38 };
+  const plotW = cssWidth - pad.left - pad.right;
+  const plotH = cssHeight - pad.top - pad.bottom;
+  const toScreen = (x, y) => ({
+    sx: pad.left + (x - xMin) / (xMax - xMin) * plotW,
+    sy: pad.top + (yMax - y) / (yMax - yMin) * plotH
+  });
+
+  ctx.strokeStyle = "#dfe5ee";
+  ctx.lineWidth = 1;
+  ctx.font = "12px sans-serif";
+  ctx.fillStyle = "#687184";
+  for (let i = 0; i <= 6; i += 1) {
+    const x = xMin + (xMax - xMin) * i / 6;
+    const p = toScreen(x, 0);
+    ctx.beginPath();
+    ctx.moveTo(p.sx, pad.top);
+    ctx.lineTo(p.sx, cssHeight - pad.bottom);
+    ctx.stroke();
+    ctx.fillText(x.toFixed(1), p.sx - 12, cssHeight - 12);
+  }
+  for (let i = 0; i <= 5; i += 1) {
+    const y = yMin + (yMax - yMin) * i / 5;
+    const p = toScreen(0, y);
+    ctx.beginPath();
+    ctx.moveTo(pad.left, p.sy);
+    ctx.lineTo(cssWidth - pad.right, p.sy);
+    ctx.stroke();
+    ctx.fillText(y.toFixed(1), 6, p.sy + 4);
+  }
+
+  const axisX = toScreen(0, 0).sx;
+  const axisY = toScreen(0, 0).sy;
+  ctx.strokeStyle = "#18212f";
+  ctx.lineWidth = 1.5;
+  if (axisY >= pad.top && axisY <= cssHeight - pad.bottom) {
+    ctx.beginPath();
+    ctx.moveTo(pad.left, axisY);
+    ctx.lineTo(cssWidth - pad.right, axisY);
+    ctx.stroke();
+  }
+  if (axisX >= pad.left && axisX <= cssWidth - pad.right) {
+    ctx.beginPath();
+    ctx.moveTo(axisX, pad.top);
+    ctx.lineTo(axisX, cssHeight - pad.bottom);
+    ctx.stroke();
+  }
+
+  const [iaRaw, ibRaw] = integralInput.value.split(",").map(value => Number(value.trim()));
+  if (showIntegral.checked && Number.isFinite(iaRaw) && Number.isFinite(ibRaw)) {
+    const a = Math.max(xMin, Math.min(xMax, iaRaw));
+    const b = Math.max(xMin, Math.min(xMax, ibRaw));
+    const shade = sampleFunction(fn, Math.min(a, b), Math.max(a, b), 220);
+    ctx.fillStyle = "rgba(24, 115, 107, .18)";
+    ctx.beginPath();
+    const start = toScreen(Math.min(a, b), 0);
+    ctx.moveTo(start.sx, start.sy);
+    shade.forEach(point => {
+      const p = toScreen(point.x, point.y);
+      ctx.lineTo(p.sx, p.sy);
+    });
+    const end = toScreen(Math.max(a, b), 0);
+    ctx.lineTo(end.sx, end.sy);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  drawPath(ctx, points, toScreen, "#18736b", 3);
+  if (showDerivative.checked) drawPath(ctx, derivativePoints, toScreen, "#2e65b8", 2, [7, 5]);
+
+  const x0 = Number(tangentInput.value);
+  const y0 = fn(x0);
+  const slope = numericalDerivative(fn, x0);
+  if (showTangent.checked && Number.isFinite(x0) && Number.isFinite(y0) && Number.isFinite(slope)) {
+    const tangent = sampleFunction(x => y0 + slope * (x - x0), xMin, xMax, 80);
+    drawPath(ctx, tangent, toScreen, "#c85b2b", 2, [4, 4]);
+    const p = toScreen(x0, y0);
+    ctx.fillStyle = "#c85b2b";
+    ctx.beginPath();
+    ctx.arc(p.sx, p.sy, 5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  const features = findGraphFeatures(fn, xMin, xMax);
+  if (showCritical.checked) {
+    [...features.roots.map(x => ({ x, kind: "root" })), ...features.extrema.map(x => ({ x, kind: "ext" }))].forEach(item => {
+      const y = item.kind === "root" ? 0 : fn(item.x);
+      const p = toScreen(item.x, y);
+      ctx.fillStyle = item.kind === "root" ? "#18212f" : "#f1c756";
+      ctx.beginPath();
+      ctx.arc(p.sx, p.sy, 4, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+
+  const integralValue = Number.isFinite(iaRaw) && Number.isFinite(ibRaw) ? integrateSimpson(fn, iaRaw, ibRaw) : null;
+  graphReadout.innerHTML = `
+    <span><b>f(${Number.isFinite(x0) ? x0 : 0})</b> = ${Number.isFinite(y0) ? y0.toFixed(4) : "不可算"}</span>
+    <span><b>f′(${Number.isFinite(x0) ? x0 : 0})</b> ≈ ${Number.isFinite(slope) ? slope.toFixed(4) : "不可算"}</span>
+    <span><b>积分</b> ≈ ${Number.isFinite(integralValue) ? integralValue.toFixed(4) : "未设置"}</span>
+    <span><b>零点</b> ${features.roots.length ? features.roots.map(x => x.toFixed(2)).join(", ") : "未检测到"}</span>
+    <span><b>极值候选</b> ${features.extrema.length ? features.extrema.map(x => x.toFixed(2)).join(", ") : "未检测到"}</span>
+  `;
+}
+
+function loadGraphExample() {
+  graphExampleIndex = (graphExampleIndex + 1) % graphExamples.length;
+  const item = graphExamples[graphExampleIndex];
+  functionInput.value = item.expr;
+  xMinInput.value = item.range[0];
+  xMaxInput.value = item.range[1];
+  tangentInput.value = item.tangent;
+  integralInput.value = item.integral;
+  drawGraph();
+}
+
 function renderDomesticMap() {
   const rows = domesticSectionMaps[domesticFilter.value];
   domesticMap.innerHTML = "";
@@ -1885,6 +2140,12 @@ proofChapterFilter.addEventListener("change", renderProofTrainer);
 examSubjectFilter.addEventListener("change", renderExamOptions);
 examChapterFilter.addEventListener("change", renderExamBank);
 examTypeFilter.addEventListener("change", renderExamBank);
+plotBtn.addEventListener("click", drawGraph);
+plotExampleBtn.addEventListener("click", loadGraphExample);
+[functionInput, xMinInput, xMaxInput, tangentInput, integralInput, showDerivative, showTangent, showIntegral, showCritical].forEach(control => {
+  control.addEventListener("change", drawGraph);
+});
+window.addEventListener("resize", drawGraph);
 
 setDefaultDate();
 renderGlossary();
@@ -1896,3 +2157,4 @@ renderProofOptions();
 renderExamOptions();
 sourceText.value = sample;
 update();
+drawGraph();
