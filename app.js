@@ -64,6 +64,7 @@ const customProblemList = document.querySelector("#customProblemList");
 const functionCanvas = document.querySelector("#functionCanvas");
 const graphTooltip = document.querySelector("#graphTooltip");
 const graphReadout = document.querySelector("#graphReadout");
+const graphRangeLabel = document.querySelector("#graphRangeLabel");
 const planGrid = document.querySelector("#planGrid");
 const quizList = document.querySelector("#quizList");
 
@@ -2103,6 +2104,7 @@ function drawGraph() {
     <span><b>零点</b> ${features.roots.length ? features.roots.map(x => x.toFixed(2)).join(", ") : "未检测到"}</span>
     <span><b>极值候选</b> ${features.extrema.length ? features.extrema.map(x => x.toFixed(2)).join(", ") : "未检测到"}</span>
   `;
+  graphRangeLabel.textContent = `当前 x 范围：${xMin.toFixed(4)} ～ ${xMax.toFixed(4)}。滚轮缩放，按住图像拖动平移。`;
 }
 
 function loadGraphExample() {
@@ -2433,8 +2435,8 @@ exportProblemsBtn.addEventListener("click", exportCustomProblems);
 importProblemsInput.addEventListener("change", () => importCustomProblems(importProblemsInput.files[0]));
 plotBtn.addEventListener("click", drawGraph);
 plotExampleBtn.addEventListener("click", loadGraphExample);
-zoomInBtn.addEventListener("click", () => zoomGraph(0.65));
-zoomOutBtn.addEventListener("click", () => zoomGraph(1.45));
+zoomInBtn.addEventListener("click", () => zoomGraph(0.5));
+zoomOutBtn.addEventListener("click", () => zoomGraph(2));
 resetViewBtn.addEventListener("click", resetGraphView);
 [functionInput, xMinInput, xMaxInput, tangentInput, integralInput, showDerivative, showTangent, showIntegral, showCritical].forEach(control => {
   control.addEventListener("change", drawGraph);
@@ -2442,6 +2444,7 @@ resetViewBtn.addEventListener("click", resetGraphView);
 functionCanvas.addEventListener("mousemove", showGraphTooltip);
 functionCanvas.addEventListener("mouseleave", () => graphTooltip.classList.remove("show"));
 functionCanvas.addEventListener("click", showGraphTooltip);
+functionCanvas.addEventListener("dblclick", resetGraphView);
 functionCanvas.addEventListener("wheel", event => {
   event.preventDefault();
   zoomGraphAt(event.clientX, event.deltaY < 0 ? 0.78 : 1.28);

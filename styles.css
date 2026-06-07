@@ -568,6 +568,18 @@ meter {
   gap: 8px;
 }
 
+.graph-range-label {
+  margin: 0;
+  padding: 9px 10px;
+  border: 1px solid #cfe1de;
+  border-radius: 8px;
+  background: #f2faf8;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
 .graph-readout {
   display: grid;
   grid-template-columns: repeat(5, minmax(120px, 1fr));
