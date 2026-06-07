@@ -1852,13 +1852,14 @@ function renderBookChapter() {
 }
 
 const graphExamples = [
-  { expr: "x^3 - 3*x", range: [-4, 4], tangent: 1, integral: "-1,2" },
-  { expr: "sin(x)", range: [-6.28, 6.28], tangent: 0.8, integral: "0,3.14" },
-  { expr: "x^2", range: [-4, 4], tangent: 1.5, integral: "0,2" },
-  { expr: "exp(-x^2)", range: [-3, 3], tangent: 1, integral: "-1,1" },
-  { expr: "log(x)", range: [0.2, 5], tangent: 2, integral: "1,4" }
+  { expr: "x^3 - 3*x\nx^2 - 1", range: [-4, 4], tangent: 1, integral: "-1,2" },
+  { expr: "sin(x)\ncos(x)", range: [-6.28, 6.28], tangent: 0.8, integral: "0,3.14" },
+  { expr: "x^2\n2*x+1", range: [-4, 4], tangent: 1.5, integral: "0,2" },
+  { expr: "exp(-x^2)\n0.5", range: [-3, 3], tangent: 1, integral: "-1,1" },
+  { expr: "log(x)\nsqrt(x)", range: [0.2, 5], tangent: 2, integral: "1,4" }
 ];
 let graphExampleIndex = 0;
+const graphColors = ["#18736b", "#2e65b8", "#c85b2b", "#7b5fb8", "#b84d68", "#6f7d1b"];
 
 function compileExpression(expr) {
   const normalized = expr
@@ -1950,13 +1951,22 @@ function drawGraph() {
   ctx.fillStyle = "#fff";
   ctx.fillRect(0, 0, cssWidth, cssHeight);
 
-  let fn;
+  let functions;
   try {
-    fn = compileExpression(functionInput.value);
+    functions = functionInput.value
+      .split(/\n+/)
+      .map(expr => expr.trim())
+      .filter(Boolean)
+      .map((expr, index) => ({ expr, fn: compileExpression(expr), color: graphColors[index % graphColors.length] }));
   } catch (error) {
     graphReadout.innerHTML = `<span class="danger-text">${error.message}</span>`;
     return;
   }
+  if (!functions.length) {
+    graphReadout.innerHTML = `<span class="danger-text">请至少输入一个函数。</span>`;
+    return;
+  }
+  const primary = functions[0];
 
   let xMin = Number(xMinInput.value);
   let xMax = Number(xMaxInput.value);
@@ -1964,9 +1974,9 @@ function drawGraph() {
     xMin = -4;
     xMax = 4;
   }
-  const points = sampleFunction(fn, xMin, xMax);
-  const derivativePoints = sampleFunction(x => numericalDerivative(fn, x), xMin, xMax);
-  const allY = [...points, ...(showDerivative.checked ? derivativePoints : [])].map(point => point.y);
+  const graphSets = functions.map(item => ({ ...item, points: sampleFunction(item.fn, xMin, xMax) }));
+  const derivativePoints = sampleFunction(x => numericalDerivative(primary.fn, x), xMin, xMax);
+  const allY = [...graphSets.flatMap(item => item.points), ...(showDerivative.checked ? derivativePoints : [])].map(point => point.y);
   let yMin = Math.min(...allY);
   let yMax = Math.max(...allY);
   if (!Number.isFinite(yMin) || !Number.isFinite(yMax) || yMin === yMax) {
@@ -2029,7 +2039,7 @@ function drawGraph() {
   if (showIntegral.checked && Number.isFinite(iaRaw) && Number.isFinite(ibRaw)) {
     const a = Math.max(xMin, Math.min(xMax, iaRaw));
     const b = Math.max(xMin, Math.min(xMax, ibRaw));
-    const shade = sampleFunction(fn, Math.min(a, b), Math.max(a, b), 220);
+    const shade = sampleFunction(primary.fn, Math.min(a, b), Math.max(a, b), 220);
     ctx.fillStyle = "rgba(24, 115, 107, .18)";
     ctx.beginPath();
     const start = toScreen(Math.min(a, b), 0);
@@ -2044,12 +2054,12 @@ function drawGraph() {
     ctx.fill();
   }
 
-  drawPath(ctx, points, toScreen, "#18736b", 3);
+  graphSets.forEach(item => drawPath(ctx, item.points, toScreen, item.color, 3));
   if (showDerivative.checked) drawPath(ctx, derivativePoints, toScreen, "#2e65b8", 2, [7, 5]);
 
   const x0 = Number(tangentInput.value);
-  const y0 = fn(x0);
-  const slope = numericalDerivative(fn, x0);
+  const y0 = primary.fn(x0);
+  const slope = numericalDerivative(primary.fn, x0);
   if (showTangent.checked && Number.isFinite(x0) && Number.isFinite(y0) && Number.isFinite(slope)) {
     const tangent = sampleFunction(x => y0 + slope * (x - x0), xMin, xMax, 80);
     drawPath(ctx, tangent, toScreen, "#c85b2b", 2, [4, 4]);
@@ -2060,10 +2070,10 @@ function drawGraph() {
     ctx.fill();
   }
 
-  const features = findGraphFeatures(fn, xMin, xMax);
+  const features = findGraphFeatures(primary.fn, xMin, xMax);
   if (showCritical.checked) {
     [...features.roots.map(x => ({ x, kind: "root" })), ...features.extrema.map(x => ({ x, kind: "ext" }))].forEach(item => {
-      const y = item.kind === "root" ? 0 : fn(item.x);
+      const y = item.kind === "root" ? 0 : primary.fn(item.x);
       const p = toScreen(item.x, y);
       ctx.fillStyle = item.kind === "root" ? "#18212f" : "#f1c756";
       ctx.beginPath();
@@ -2072,8 +2082,10 @@ function drawGraph() {
     });
   }
 
-  const integralValue = Number.isFinite(iaRaw) && Number.isFinite(ibRaw) ? integrateSimpson(fn, iaRaw, ibRaw) : null;
+  const integralValue = Number.isFinite(iaRaw) && Number.isFinite(ibRaw) ? integrateSimpson(primary.fn, iaRaw, ibRaw) : null;
+  const legend = graphSets.map((item, index) => `<span><i style="background:${item.color}"></i><b>f${index + 1}</b> ${item.expr}</span>`).join("");
   graphReadout.innerHTML = `
+    <div class="graph-legend">${legend}</div>
     <span><b>f(${Number.isFinite(x0) ? x0 : 0})</b> = ${Number.isFinite(y0) ? y0.toFixed(4) : "不可算"}</span>
     <span><b>f′(${Number.isFinite(x0) ? x0 : 0})</b> ≈ ${Number.isFinite(slope) ? slope.toFixed(4) : "不可算"}</span>
     <span><b>积分</b> ≈ ${Number.isFinite(integralValue) ? integralValue.toFixed(4) : "未设置"}</span>

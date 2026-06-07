@@ -488,6 +488,12 @@ meter {
   font-size: 13px;
 }
 
+.function-textarea {
+  min-height: 96px;
+  resize: vertical;
+  font-family: "Consolas", "Microsoft YaHei", monospace;
+}
+
 .graph-stage {
   min-width: 0;
   display: grid;
@@ -508,6 +514,13 @@ meter {
   gap: 8px;
 }
 
+.graph-legend {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .graph-readout span {
   padding: 9px 10px;
   border: 1px solid var(--line);
@@ -519,6 +532,19 @@ meter {
 
 .graph-readout b {
   color: var(--accent);
+}
+
+.graph-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.graph-legend i {
+  width: 12px;
+  height: 12px;
+  display: inline-block;
+  border-radius: 50%;
 }
 
 .danger-text {
