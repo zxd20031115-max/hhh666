@@ -29,6 +29,8 @@ const importProblemsInput = document.querySelector("#importProblemsInput");
 const functionInput = document.querySelector("#functionInput");
 const xMinInput = document.querySelector("#xMinInput");
 const xMaxInput = document.querySelector("#xMaxInput");
+const yMinInput = document.querySelector("#yMinInput");
+const yMaxInput = document.querySelector("#yMaxInput");
 const tangentInput = document.querySelector("#tangentInput");
 const integralInput = document.querySelector("#integralInput");
 const showDerivative = document.querySelector("#showDerivative");
@@ -1857,11 +1859,11 @@ function renderBookChapter() {
 }
 
 const graphExamples = [
-  { expr: "x^3 - 3*x\nx^2 - 1", range: [-4, 4], tangent: 1, integral: "-1,2" },
-  { expr: "sin(x)\ncos(x)", range: [-6.28, 6.28], tangent: 0.8, integral: "0,3.14" },
-  { expr: "x^2\n2*x+1", range: [-4, 4], tangent: 1.5, integral: "0,2" },
-  { expr: "exp(-x^2)\n0.5", range: [-3, 3], tangent: 1, integral: "-1,1" },
-  { expr: "log(x)\nsqrt(x)", range: [0.2, 5], tangent: 2, integral: "1,4" }
+  { expr: "x^3 - 3*x\nx^2 - 1", range: [-4, 4], yRange: [-8, 8], tangent: 1, integral: "-1,2" },
+  { expr: "sin(x)\ncos(x)", range: [-6.28, 6.28], yRange: [-2, 2], tangent: 0.8, integral: "0,3.14" },
+  { expr: "x^2\n2*x+1", range: [-4, 4], yRange: [-4, 12], tangent: 1.5, integral: "0,2" },
+  { expr: "exp(-x^2)\n0.5", range: [-3, 3], yRange: [-0.5, 1.5], tangent: 1, integral: "-1,1" },
+  { expr: "log(x)\nsqrt(x)", range: [0.2, 5], yRange: [-2, 4], tangent: 2, integral: "1,4" }
 ];
 let graphExampleIndex = 0;
 const graphColors = ["#18736b", "#2e65b8", "#c85b2b", "#7b5fb8", "#b84d68", "#6f7d1b"];
@@ -1981,18 +1983,14 @@ function drawGraph() {
     xMin = -4;
     xMax = 4;
   }
-  const graphSets = functions.map(item => ({ ...item, points: sampleFunction(item.fn, xMin, xMax) }));
-  const derivativePoints = sampleFunction(x => numericalDerivative(primary.fn, x), xMin, xMax);
-  const allY = [...graphSets.flatMap(item => item.points), ...(showDerivative.checked ? derivativePoints : [])].map(point => point.y);
-  let yMin = Math.min(...allY);
-  let yMax = Math.max(...allY);
-  if (!Number.isFinite(yMin) || !Number.isFinite(yMax) || yMin === yMax) {
+  let yMin = Number(yMinInput.value);
+  let yMax = Number(yMaxInput.value);
+  if (!Number.isFinite(yMin) || !Number.isFinite(yMax) || yMin >= yMax) {
     yMin = -5;
     yMax = 5;
   }
-  const paddingY = (yMax - yMin) * 0.14 || 1;
-  yMin -= paddingY;
-  yMax += paddingY;
+  const graphSets = functions.map(item => ({ ...item, points: sampleFunction(item.fn, xMin, xMax) }));
+  const derivativePoints = sampleFunction(x => numericalDerivative(primary.fn, x), xMin, xMax);
 
   const pad = { left: 46, right: 18, top: 18, bottom: 38 };
   const plotW = cssWidth - pad.left - pad.right;
@@ -2104,7 +2102,7 @@ function drawGraph() {
     <span><b>零点</b> ${features.roots.length ? features.roots.map(x => x.toFixed(2)).join(", ") : "未检测到"}</span>
     <span><b>极值候选</b> ${features.extrema.length ? features.extrema.map(x => x.toFixed(2)).join(", ") : "未检测到"}</span>
   `;
-  graphRangeLabel.textContent = `当前 x 范围：${xMin.toFixed(4)} ～ ${xMax.toFixed(4)}。滚轮缩放，按住图像拖动平移。`;
+  graphRangeLabel.textContent = `当前视图：x ${xMin.toFixed(3)} ～ ${xMax.toFixed(3)}，y ${yMin.toFixed(3)} ～ ${yMax.toFixed(3)}。滚轮整体缩放，按住图像上下左右拖动。`;
 }
 
 function loadGraphExample() {
@@ -2113,6 +2111,8 @@ function loadGraphExample() {
   functionInput.value = item.expr;
   xMinInput.value = item.range[0];
   xMaxInput.value = item.range[1];
+  yMinInput.value = item.yRange[0];
+  yMaxInput.value = item.yRange[1];
   tangentInput.value = item.tangent;
   integralInput.value = item.integral;
   drawGraph();
@@ -2121,28 +2121,34 @@ function loadGraphExample() {
 function zoomGraph(factor) {
   const xMin = Number(xMinInput.value);
   const xMax = Number(xMaxInput.value);
-  if (!Number.isFinite(xMin) || !Number.isFinite(xMax) || xMin >= xMax) return;
-  const center = (xMin + xMax) / 2;
-  const half = (xMax - xMin) * factor / 2;
-  xMinInput.value = Number((center - half).toFixed(4));
-  xMaxInput.value = Number((center + half).toFixed(4));
+  const yMin = Number(yMinInput.value);
+  const yMax = Number(yMaxInput.value);
+  if (!Number.isFinite(xMin) || !Number.isFinite(xMax) || xMin >= xMax || !Number.isFinite(yMin) || !Number.isFinite(yMax) || yMin >= yMax) return;
+  const xCenter = (xMin + xMax) / 2;
+  const yCenter = (yMin + yMax) / 2;
+  const xHalf = (xMax - xMin) * factor / 2;
+  const yHalf = (yMax - yMin) * factor / 2;
+  xMinInput.value = Number((xCenter - xHalf).toFixed(4));
+  xMaxInput.value = Number((xCenter + xHalf).toFixed(4));
+  yMinInput.value = Number((yCenter - yHalf).toFixed(4));
+  yMaxInput.value = Number((yCenter + yHalf).toFixed(4));
   drawGraph();
 }
 
-function zoomGraphAt(clientX, factor) {
+function zoomGraphAt(clientX, clientY, factor) {
   if (!graphState) {
     zoomGraph(factor);
     return;
   }
   const rect = functionCanvas.getBoundingClientRect();
   const sx = clientX - rect.left;
-  const { pad, cssWidth, xMin, xMax } = graphState;
-  const ratio = Math.min(1, Math.max(0, (sx - pad.left) / (cssWidth - pad.left - pad.right)));
-  const focus = xMin + ratio * (xMax - xMin);
-  const newMin = focus - (focus - xMin) * factor;
-  const newMax = focus + (xMax - focus) * factor;
-  xMinInput.value = Number(newMin.toFixed(4));
-  xMaxInput.value = Number(newMax.toFixed(4));
+  const sy = clientY - rect.top;
+  const { fromScreen, xMin, xMax, yMin, yMax } = graphState;
+  const focus = fromScreen(sx, sy);
+  xMinInput.value = Number((focus.x - (focus.x - xMin) * factor).toFixed(4));
+  xMaxInput.value = Number((focus.x + (xMax - focus.x) * factor).toFixed(4));
+  yMinInput.value = Number((focus.y - (focus.y - yMin) * factor).toFixed(4));
+  yMaxInput.value = Number((focus.y + (yMax - focus.y) * factor).toFixed(4));
   drawGraph();
 }
 
@@ -2159,6 +2165,8 @@ function resetGraphView() {
   const item = graphExamples[graphExampleIndex] || graphExamples[0];
   xMinInput.value = item.range[0];
   xMaxInput.value = item.range[1];
+  yMinInput.value = item.yRange[0];
+  yMaxInput.value = item.yRange[1];
   drawGraph();
 }
 
@@ -2187,8 +2195,11 @@ function startGraphDrag(event) {
   if (!graphState) return;
   graphDrag = {
     startX: event.clientX,
+    startY: event.clientY,
     xMin: graphState.xMin,
-    xMax: graphState.xMax
+    xMax: graphState.xMax,
+    yMin: graphState.yMin,
+    yMax: graphState.yMax
   };
   functionCanvas.classList.add("dragging");
 }
@@ -2196,9 +2207,13 @@ function startGraphDrag(event) {
 function moveGraphDrag(event) {
   if (!graphDrag || !graphState) return;
   const deltaPx = event.clientX - graphDrag.startX;
+  const deltaPy = event.clientY - graphDrag.startY;
   const dx = -deltaPx / graphState.plotW * (graphDrag.xMax - graphDrag.xMin);
+  const dy = deltaPy / graphState.plotH * (graphDrag.yMax - graphDrag.yMin);
   xMinInput.value = Number((graphDrag.xMin + dx).toFixed(4));
   xMaxInput.value = Number((graphDrag.xMax + dx).toFixed(4));
+  yMinInput.value = Number((graphDrag.yMin + dy).toFixed(4));
+  yMaxInput.value = Number((graphDrag.yMax + dy).toFixed(4));
   drawGraph();
   showGraphTooltip(event);
 }
@@ -2438,7 +2453,7 @@ plotExampleBtn.addEventListener("click", loadGraphExample);
 zoomInBtn.addEventListener("click", () => zoomGraph(0.5));
 zoomOutBtn.addEventListener("click", () => zoomGraph(2));
 resetViewBtn.addEventListener("click", resetGraphView);
-[functionInput, xMinInput, xMaxInput, tangentInput, integralInput, showDerivative, showTangent, showIntegral, showCritical].forEach(control => {
+[functionInput, xMinInput, xMaxInput, yMinInput, yMaxInput, tangentInput, integralInput, showDerivative, showTangent, showIntegral, showCritical].forEach(control => {
   control.addEventListener("change", drawGraph);
 });
 functionCanvas.addEventListener("mousemove", showGraphTooltip);
@@ -2447,7 +2462,7 @@ functionCanvas.addEventListener("click", showGraphTooltip);
 functionCanvas.addEventListener("dblclick", resetGraphView);
 functionCanvas.addEventListener("wheel", event => {
   event.preventDefault();
-  zoomGraphAt(event.clientX, event.deltaY < 0 ? 0.78 : 1.28);
+  zoomGraphAt(event.clientX, event.clientY, event.deltaY < 0 ? 0.78 : 1.28);
   showGraphTooltip(event);
 }, { passive: false });
 functionCanvas.addEventListener("mousedown", event => {
