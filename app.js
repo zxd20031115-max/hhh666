@@ -15,6 +15,17 @@ const proofChapterFilter = document.querySelector("#proofChapterFilter");
 const examSubjectFilter = document.querySelector("#examSubjectFilter");
 const examChapterFilter = document.querySelector("#examChapterFilter");
 const examTypeFilter = document.querySelector("#examTypeFilter");
+const customSubject = document.querySelector("#customSubject");
+const customChapter = document.querySelector("#customChapter");
+const customType = document.querySelector("#customType");
+const customTitle = document.querySelector("#customTitle");
+const customStem = document.querySelector("#customStem");
+const customImage = document.querySelector("#customImage");
+const customHint = document.querySelector("#customHint");
+const customAnswer = document.querySelector("#customAnswer");
+const saveCustomProblem = document.querySelector("#saveCustomProblem");
+const exportProblemsBtn = document.querySelector("#exportProblemsBtn");
+const importProblemsInput = document.querySelector("#importProblemsInput");
 const functionInput = document.querySelector("#functionInput");
 const xMinInput = document.querySelector("#xMinInput");
 const xMaxInput = document.querySelector("#xMaxInput");
@@ -46,6 +57,7 @@ const domesticMap = document.querySelector("#domesticMap");
 const courseGuide = document.querySelector("#courseGuide");
 const proofTrainer = document.querySelector("#proofTrainer");
 const examBank = document.querySelector("#examBank");
+const customProblemList = document.querySelector("#customProblemList");
 const functionCanvas = document.querySelector("#functionCanvas");
 const graphReadout = document.querySelector("#graphReadout");
 const planGrid = document.querySelector("#planGrid");
@@ -1273,6 +1285,167 @@ const examProblems = {
   ]
 };
 
+const customProblemStorageKey = "studyguardCustomProblemsV1";
+let customProblems = loadCustomProblems();
+
+function loadCustomProblems() {
+  try {
+    const saved = localStorage.getItem(customProblemStorageKey);
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistCustomProblems() {
+  localStorage.setItem(customProblemStorageKey, JSON.stringify(customProblems));
+}
+
+function chapterOptionsFor(subject) {
+  return examProblems[subject].map(item => ({ id: item.id, name: item.chapter }));
+}
+
+function customProblemsFor(subject, chapterId) {
+  return customProblems
+    .filter(problem => problem.subject === subject && problem.chapterId === chapterId)
+    .map(problem => ({
+      type: problem.type,
+      title: problem.title,
+      stem: `${problem.stem || ""}${problem.image ? `<img class="uploaded-problem-image" src="${problem.image}" alt="上传的题目图片">` : ""}`,
+      hint: problem.hint || "这道题还没有写提示。可以回到“我的题库”补充。",
+      answer: problem.answer?.length ? problem.answer : ["这道题还没有写详细答案。建议做完后把步骤补进来。"],
+      customId: problem.id
+    }));
+}
+
+function syncCustomChapterOptions() {
+  customChapter.innerHTML = "";
+  chapterOptionsFor(customSubject.value).forEach(chapter => {
+    const option = document.createElement("option");
+    option.value = chapter.id;
+    option.textContent = chapter.name;
+    customChapter.appendChild(option);
+  });
+}
+
+function imageFileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    if (!file) {
+      resolve("");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function saveCustomProblemFromForm() {
+  const title = customTitle.value.trim() || "未命名题目";
+  const stem = customStem.value.trim();
+  const hint = customHint.value.trim();
+  const answer = customAnswer.value
+    .split(/\n+/)
+    .map(line => line.trim())
+    .filter(Boolean);
+  const image = await imageFileToDataUrl(customImage.files[0]);
+
+  if (!stem && !image) {
+    alert("请至少填写题目文字或上传一张题目图片。");
+    return;
+  }
+
+  customProblems.unshift({
+    id: `custom-${Date.now()}`,
+    subject: customSubject.value,
+    chapterId: customChapter.value,
+    type: customType.value,
+    title,
+    stem,
+    image,
+    hint,
+    answer,
+    createdAt: new Date().toISOString()
+  });
+  persistCustomProblems();
+  clearCustomForm();
+  renderCustomProblemList();
+  renderExamBank();
+}
+
+function clearCustomForm() {
+  customTitle.value = "";
+  customStem.value = "";
+  customHint.value = "";
+  customAnswer.value = "";
+  customImage.value = "";
+}
+
+function deleteCustomProblem(id) {
+  customProblems = customProblems.filter(problem => problem.id !== id);
+  persistCustomProblems();
+  renderCustomProblemList();
+  renderExamBank();
+}
+
+function renderCustomProblemList() {
+  customProblemList.innerHTML = "";
+  if (!customProblems.length) {
+    customProblemList.innerHTML = `<p class="empty-note">还没有保存题目。上传照片或录入题干后，这里会显示你的私人题库。</p>`;
+    return;
+  }
+
+  customProblems.forEach(problem => {
+    const chapter = chapterOptionsFor(problem.subject).find(item => item.id === problem.chapterId)?.name || problem.chapterId;
+    const card = document.createElement("article");
+    card.className = "saved-problem-card";
+    card.innerHTML = `
+      <div>
+        <span>${problem.subject === "calculus" ? "微积分" : "线性代数"} · ${chapter} · ${problem.type}</span>
+        <strong>${problem.title}</strong>
+        <p>${problem.stem || "图片题"}</p>
+      </div>
+      ${problem.image ? `<img src="${problem.image}" alt="上传的题目缩略图">` : ""}
+      <button type="button">删除</button>
+    `;
+    card.querySelector("button").addEventListener("click", () => deleteCustomProblem(problem.id));
+    customProblemList.appendChild(card);
+  });
+}
+
+function exportCustomProblems() {
+  const blob = new Blob([JSON.stringify(customProblems, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "studyguard-my-problems.json";
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function importCustomProblems(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const imported = JSON.parse(reader.result);
+      if (!Array.isArray(imported)) throw new Error("格式不正确");
+      const normalized = imported
+        .filter(item => item.subject && item.chapterId && item.title)
+        .map(item => ({ ...item, id: item.id || `custom-${Date.now()}-${Math.random()}` }));
+      customProblems = [...normalized, ...customProblems];
+      persistCustomProblems();
+      renderCustomProblemList();
+      renderExamBank();
+      importProblemsInput.value = "";
+    } catch {
+      alert("导入失败：请选择从本网站导出的 JSON 文件。");
+    }
+  };
+  reader.readAsText(file);
+}
+
 function addExamProblem(subject, chapterId, problem) {
   const chapter = examProblems[subject].find(item => item.id === chapterId);
   if (chapter) chapter.problems.push(problem);
@@ -2007,15 +2180,16 @@ function renderExamBank() {
   const rows = examProblems[examSubjectFilter.value];
   const chapter = rows.find(row => row.id === examChapterFilter.value) || rows[0];
   const selectedType = examTypeFilter.value;
-  const problems = chapter.problems.filter(problem => selectedType === "all" || problem.type === selectedType);
+  const mergedProblems = [...chapter.problems, ...customProblemsFor(examSubjectFilter.value, chapter.id)];
+  const problems = mergedProblems.filter(problem => selectedType === "all" || problem.type === selectedType);
 
   examBank.innerHTML = problems.map((problem, index) => {
     const answerSteps = problem.answer.map((step, stepIndex) => `<li><b>Step ${stepIndex + 1}</b><span>${step}</span></li>`).join("");
     return `
-      <article class="exam-card">
+      <article class="exam-card ${problem.customId ? "custom-exam-card" : ""}">
         <div class="exam-meta">
           <span>${problem.type}</span>
-          <small>${chapter.chapter} · 题 ${index + 1}</small>
+          <small>${chapter.chapter} · ${problem.customId ? "我的题" : `题 ${index + 1}`}</small>
         </div>
         <h3>${problem.title}</h3>
         <p class="exam-stem">${problem.stem}</p>
@@ -2140,6 +2314,10 @@ proofChapterFilter.addEventListener("change", renderProofTrainer);
 examSubjectFilter.addEventListener("change", renderExamOptions);
 examChapterFilter.addEventListener("change", renderExamBank);
 examTypeFilter.addEventListener("change", renderExamBank);
+customSubject.addEventListener("change", syncCustomChapterOptions);
+saveCustomProblem.addEventListener("click", saveCustomProblemFromForm);
+exportProblemsBtn.addEventListener("click", exportCustomProblems);
+importProblemsInput.addEventListener("change", () => importCustomProblems(importProblemsInput.files[0]));
 plotBtn.addEventListener("click", drawGraph);
 plotExampleBtn.addEventListener("click", loadGraphExample);
 [functionInput, xMinInput, xMaxInput, tangentInput, integralInput, showDerivative, showTangent, showIntegral, showCritical].forEach(control => {
@@ -2155,6 +2333,8 @@ renderDomesticMap();
 renderCourseGuide();
 renderProofOptions();
 renderExamOptions();
+syncCustomChapterOptions();
+renderCustomProblemList();
 sourceText.value = sample;
 update();
 drawGraph();

@@ -1000,6 +1000,100 @@ meter {
   line-height: 1.6;
 }
 
+.custom-exam-card {
+  border-left: 4px solid var(--accent);
+}
+
+.uploaded-problem-image {
+  display: block;
+  width: 100%;
+  max-height: 340px;
+  object-fit: contain;
+  margin-top: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+
+.problem-uploader {
+  display: grid;
+  grid-template-columns: minmax(300px, .9fr) minmax(320px, 1.1fr);
+  gap: 14px;
+}
+
+.problem-form,
+.custom-preview {
+  display: grid;
+  gap: 12px;
+}
+
+.small-textarea {
+  min-height: 96px;
+}
+
+.file-button {
+  min-height: 42px;
+  display: grid;
+  place-items: center;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.file-button input {
+  display: none;
+}
+
+.custom-problem-list {
+  display: grid;
+  gap: 10px;
+}
+
+.saved-problem-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.saved-problem-card span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.saved-problem-card strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.saved-problem-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.saved-problem-card img {
+  width: 88px;
+  max-height: 88px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.saved-problem-card button {
+  grid-column: 1 / -1;
+}
+
 .plan-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(150px, 1fr));
@@ -1096,6 +1190,7 @@ meter {
   .control-row,
   .graph-tool,
   .guide-columns,
+  .problem-uploader,
   .proof-layout,
   .quiz-list,
   .formula-layout,
@@ -1256,5 +1351,14 @@ meter {
 
   #functionCanvas {
     min-height: 300px;
+  }
+
+  .saved-problem-card {
+    grid-template-columns: 1fr;
+  }
+
+  .saved-problem-card img {
+    width: 100%;
+    max-height: 220px;
   }
 }
