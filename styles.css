@@ -500,12 +500,68 @@ meter {
   gap: 10px;
 }
 
+.canvas-wrap {
+  position: relative;
+  min-width: 0;
+}
+
 #functionCanvas {
   width: 100%;
   min-height: 340px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
+  cursor: crosshair;
+  touch-action: manipulation;
+}
+
+.graph-tooltip {
+  position: absolute;
+  display: none;
+  min-width: 158px;
+  max-width: 220px;
+  padding: 8px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .96);
+  box-shadow: var(--shadow);
+  pointer-events: none;
+  z-index: 3;
+  font-size: 12px;
+}
+
+.graph-tooltip.show {
+  display: grid;
+  gap: 4px;
+}
+
+.graph-tooltip b {
+  color: var(--accent);
+}
+
+.graph-tooltip em {
+  color: var(--muted);
+  font-style: normal;
+}
+
+.graph-tooltip span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink);
+}
+
+.graph-tooltip i {
+  width: 10px;
+  height: 10px;
+  display: inline-block;
+  border-radius: 50%;
+}
+
+.graph-zoom-controls {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
 }
 
 .graph-readout {
@@ -1250,7 +1306,8 @@ meter {
   }
 
   .toggle-grid,
-  .graph-readout {
+  .graph-readout,
+  .graph-zoom-controls {
     grid-template-columns: 1fr;
   }
 

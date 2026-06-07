@@ -201,7 +201,15 @@ x^2 - 1</textarea>
           <p class="graph-help">可用：sin(x), cos(x), tan(x), exp(x), log(x), sqrt(x), abs(x), x^2。</p>
         </div>
         <div class="graph-stage">
-          <canvas id="functionCanvas" width="980" height="560"></canvas>
+          <div class="canvas-wrap">
+            <canvas id="functionCanvas" width="980" height="560"></canvas>
+            <div id="graphTooltip" class="graph-tooltip"></div>
+          </div>
+          <div class="graph-zoom-controls">
+            <button id="zoomInBtn" type="button">放大</button>
+            <button id="zoomOutBtn" type="button">缩小</button>
+            <button id="resetViewBtn" type="button">重置视图</button>
+          </div>
           <div id="graphReadout" class="graph-readout"></div>
         </div>
       </div>

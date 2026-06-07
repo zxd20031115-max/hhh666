@@ -37,6 +37,9 @@ const showIntegral = document.querySelector("#showIntegral");
 const showCritical = document.querySelector("#showCritical");
 const plotBtn = document.querySelector("#plotBtn");
 const plotExampleBtn = document.querySelector("#plotExampleBtn");
+const zoomInBtn = document.querySelector("#zoomInBtn");
+const zoomOutBtn = document.querySelector("#zoomOutBtn");
+const resetViewBtn = document.querySelector("#resetViewBtn");
 
 const wordCount = document.querySelector("#wordCount");
 const riskBadge = document.querySelector("#riskBadge");
@@ -59,6 +62,7 @@ const proofTrainer = document.querySelector("#proofTrainer");
 const examBank = document.querySelector("#examBank");
 const customProblemList = document.querySelector("#customProblemList");
 const functionCanvas = document.querySelector("#functionCanvas");
+const graphTooltip = document.querySelector("#graphTooltip");
 const graphReadout = document.querySelector("#graphReadout");
 const planGrid = document.querySelector("#planGrid");
 const quizList = document.querySelector("#quizList");
@@ -1860,6 +1864,7 @@ const graphExamples = [
 ];
 let graphExampleIndex = 0;
 const graphColors = ["#18736b", "#2e65b8", "#c85b2b", "#7b5fb8", "#b84d68", "#6f7d1b"];
+let graphState = null;
 
 function compileExpression(expr) {
   const normalized = expr
@@ -1994,6 +1999,11 @@ function drawGraph() {
     sx: pad.left + (x - xMin) / (xMax - xMin) * plotW,
     sy: pad.top + (yMax - y) / (yMax - yMin) * plotH
   });
+  const fromScreen = (sx, sy) => ({
+    x: xMin + (sx - pad.left) / plotW * (xMax - xMin),
+    y: yMax - (sy - pad.top) / plotH * (yMax - yMin)
+  });
+  graphState = { xMin, xMax, yMin, yMax, pad, plotW, plotH, cssWidth, cssHeight, functions, toScreen, fromScreen };
 
   ctx.strokeStyle = "#dfe5ee";
   ctx.lineWidth = 1;
@@ -2103,6 +2113,45 @@ function loadGraphExample() {
   tangentInput.value = item.tangent;
   integralInput.value = item.integral;
   drawGraph();
+}
+
+function zoomGraph(factor) {
+  const xMin = Number(xMinInput.value);
+  const xMax = Number(xMaxInput.value);
+  if (!Number.isFinite(xMin) || !Number.isFinite(xMax) || xMin >= xMax) return;
+  const center = (xMin + xMax) / 2;
+  const half = (xMax - xMin) * factor / 2;
+  xMinInput.value = Number((center - half).toFixed(4));
+  xMaxInput.value = Number((center + half).toFixed(4));
+  drawGraph();
+}
+
+function resetGraphView() {
+  const item = graphExamples[graphExampleIndex] || graphExamples[0];
+  xMinInput.value = item.range[0];
+  xMaxInput.value = item.range[1];
+  drawGraph();
+}
+
+function showGraphTooltip(event) {
+  if (!graphState) return;
+  const rect = functionCanvas.getBoundingClientRect();
+  const sx = event.clientX - rect.left;
+  const sy = event.clientY - rect.top;
+  const { pad, cssWidth, cssHeight, fromScreen, functions } = graphState;
+  if (sx < pad.left || sx > cssWidth - pad.right || sy < pad.top || sy > cssHeight - pad.bottom) {
+    graphTooltip.classList.remove("show");
+    return;
+  }
+  const point = fromScreen(sx, sy);
+  const values = functions.slice(0, 4).map((item, index) => {
+    const y = item.fn(point.x);
+    return Number.isFinite(y) ? `<span><i style="background:${item.color}"></i>f${index + 1}(x)=${y.toFixed(4)}</span>` : "";
+  }).join("");
+  graphTooltip.innerHTML = `<b>x=${point.x.toFixed(4)}</b><em>光标 y=${point.y.toFixed(4)}</em>${values}`;
+  graphTooltip.style.left = `${Math.min(sx + 14, rect.width - 170)}px`;
+  graphTooltip.style.top = `${Math.max(8, sy - 16)}px`;
+  graphTooltip.classList.add("show");
 }
 
 function renderDomesticMap() {
@@ -2332,9 +2381,15 @@ exportProblemsBtn.addEventListener("click", exportCustomProblems);
 importProblemsInput.addEventListener("change", () => importCustomProblems(importProblemsInput.files[0]));
 plotBtn.addEventListener("click", drawGraph);
 plotExampleBtn.addEventListener("click", loadGraphExample);
+zoomInBtn.addEventListener("click", () => zoomGraph(0.65));
+zoomOutBtn.addEventListener("click", () => zoomGraph(1.45));
+resetViewBtn.addEventListener("click", resetGraphView);
 [functionInput, xMinInput, xMaxInput, tangentInput, integralInput, showDerivative, showTangent, showIntegral, showCritical].forEach(control => {
   control.addEventListener("change", drawGraph);
 });
+functionCanvas.addEventListener("mousemove", showGraphTooltip);
+functionCanvas.addEventListener("mouseleave", () => graphTooltip.classList.remove("show"));
+functionCanvas.addEventListener("click", showGraphTooltip);
 window.addEventListener("resize", drawGraph);
 
 setDefaultDate();
