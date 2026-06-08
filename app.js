@@ -2135,7 +2135,13 @@ function handleSymbolInsert(event) {
   const template = button.dataset.template;
   const insert = button.dataset.insert;
   if (template) {
-    insertIntoFunctionInput(template, template.includes("(x)"));
+    if (template.includes("log(a)")) {
+      insertIntoFunctionInput(template);
+      const aIndex = functionInput.value.lastIndexOf("a)");
+      if (aIndex >= 0) functionInput.setSelectionRange(aIndex, aIndex + 1);
+    } else {
+      insertIntoFunctionInput(template, template.includes("(x)"));
+    }
   } else {
     insertIntoFunctionInput(insert);
   }
