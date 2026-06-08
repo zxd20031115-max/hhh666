@@ -2118,6 +2118,29 @@ function loadGraphExample() {
   drawGraph();
 }
 
+function insertIntoFunctionInput(text, selectInner = false) {
+  const input = functionInput;
+  const start = input.selectionStart ?? input.value.length;
+  const end = input.selectionEnd ?? input.value.length;
+  input.value = `${input.value.slice(0, start)}${text}${input.value.slice(end)}`;
+  input.focus();
+  const innerStart = selectInner ? start + text.indexOf("(") + 1 : start + text.length;
+  const innerEnd = selectInner ? start + text.lastIndexOf(")") : innerStart;
+  input.setSelectionRange(innerStart, innerEnd);
+}
+
+function handleSymbolInsert(event) {
+  const button = event.target.closest("[data-insert], [data-template]");
+  if (!button) return;
+  const template = button.dataset.template;
+  const insert = button.dataset.insert;
+  if (template) {
+    insertIntoFunctionInput(template, template.includes("(x)"));
+  } else {
+    insertIntoFunctionInput(insert);
+  }
+}
+
 function zoomGraph(factor) {
   const xMin = Number(xMinInput.value);
   const xMax = Number(xMaxInput.value);
@@ -2450,6 +2473,7 @@ exportProblemsBtn.addEventListener("click", exportCustomProblems);
 importProblemsInput.addEventListener("change", () => importCustomProblems(importProblemsInput.files[0]));
 plotBtn.addEventListener("click", drawGraph);
 plotExampleBtn.addEventListener("click", loadGraphExample);
+document.querySelector(".symbol-pad").addEventListener("click", handleSymbolInsert);
 zoomInBtn.addEventListener("click", () => zoomGraph(0.5));
 zoomOutBtn.addEventListener("click", () => zoomGraph(2));
 resetViewBtn.addEventListener("click", resetGraphView);

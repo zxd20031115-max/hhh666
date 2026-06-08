@@ -481,6 +481,34 @@ meter {
   min-height: auto;
 }
 
+.symbol-pad {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+
+.symbol-group {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(38px, 1fr));
+  gap: 7px;
+}
+
+.symbol-group .label {
+  grid-column: 1 / -1;
+  margin-bottom: 0;
+}
+
+.symbol-group button {
+  min-height: 38px;
+  padding: 0 8px;
+  font-family: "Cambria Math", "Times New Roman", "Microsoft YaHei", serif;
+  font-size: 15px;
+  background: #fff;
+}
+
 .graph-help {
   margin: 0;
   color: var(--muted);
@@ -1327,6 +1355,10 @@ meter {
     grid-template-columns: 1fr;
   }
 
+  .symbol-group {
+    grid-template-columns: repeat(4, minmax(48px, 1fr));
+  }
+
   .lookup-tools select,
   .lookup-tools input,
   .panel-head > select,
@@ -1450,6 +1482,10 @@ meter {
 
   #functionCanvas {
     min-height: 300px;
+  }
+
+  .symbol-group button {
+    min-height: 42px;
   }
 
   .saved-problem-card {
