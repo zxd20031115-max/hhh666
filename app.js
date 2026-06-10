@@ -1383,6 +1383,7 @@ async function saveCustomProblemFromForm() {
   persistCustomProblems();
   clearCustomForm();
   renderCustomProblemList();
+  syncExamTypeOptions();
   renderExamBank();
 }
 
@@ -1398,6 +1399,7 @@ function deleteCustomProblem(id) {
   customProblems = customProblems.filter(problem => problem.id !== id);
   persistCustomProblems();
   renderCustomProblemList();
+  syncExamTypeOptions();
   renderExamBank();
 }
 
@@ -1619,6 +1621,31 @@ function applyCalculusTongjiPractice() {
 }
 
 applyCalculusTongjiPractice();
+
+
+function applyCalculusProofTrainer() {
+  if (!Array.isArray(window.calculusTocMap)) return;
+  proofBanks.calculus = window.calculusTocMap.map(chapter => ({
+    id: `calc-proof-${chapter.chapter}`,
+    chapter: chapter.title,
+    domestic: chapter.sections.map(section => `${section.no} ${section.cn}`).join(" / "),
+    pattern: `${chapter.title}: ${chapter.sections.map(section => `${section.no} ${section.jp}`).join(" / ")}`,
+    proofSteps: [
+      `确认本章范围：${chapter.sections.map(section => section.no).join("、")}。`,
+      "先写清楚定义和定理条件。",
+      "把目标改写成标准的极限、导数、积分、级数或连续性命题。",
+      "确认条件满足后，再使用对应定理。",
+      "最后回到题目要求，写明结论。"
+    ],
+    questions: chapter.sections.slice(0, 3).map(section => ({
+      title: `${section.no} ${section.cn}`,
+      task: `${section.jp} / ${section.cn}`,
+      hint: section.tongji
+    }))
+  }));
+}
+
+applyCalculusProofTrainer();
 
 const stopwords = new Set("の に を は が と で から まで こと ため する ある いる これ それ 的 了 和 是 在 与 及 或 一个 一种 进行 可以 需要 通过 说明 重点 课程 作业 要求".split(" "));
 const sensitiveRules = [
@@ -2424,7 +2451,24 @@ function renderExamOptions() {
     option.textContent = row.chapter;
     examChapterFilter.appendChild(option);
   });
+  syncExamTypeOptions();
   renderExamBank();
+}
+
+function syncExamTypeOptions() {
+  const rows = examProblems[examSubjectFilter.value];
+  const chapter = rows.find(row => row.id === examChapterFilter.value) || rows[0];
+  const mergedProblems = [...chapter.problems, ...customProblemsFor(examSubjectFilter.value, chapter.id)];
+  const availableTypes = Array.from(new Set(mergedProblems.map(problem => problem.type))).filter(Boolean);
+  const current = examTypeFilter.value;
+  examTypeFilter.innerHTML = `<option value="all">全部题型</option>`;
+  availableTypes.forEach(type => {
+    const option = document.createElement("option");
+    option.value = type;
+    option.textContent = type;
+    examTypeFilter.appendChild(option);
+  });
+  examTypeFilter.value = current === "all" || availableTypes.includes(current) ? current : "all";
 }
 
 function renderExamBank() {
@@ -2883,7 +2927,10 @@ courseFilter.addEventListener("change", renderCourseGuide);
 proofSubjectFilter.addEventListener("change", renderProofOptions);
 proofChapterFilter.addEventListener("change", renderProofTrainer);
 examSubjectFilter.addEventListener("change", renderExamOptions);
-examChapterFilter.addEventListener("change", renderExamBank);
+examChapterFilter.addEventListener("change", () => {
+  syncExamTypeOptions();
+  renderExamBank();
+});
 examTypeFilter.addEventListener("change", renderExamBank);
 formulaChapterFilter?.addEventListener("change", renderFormulaArchive);
 formulaTypeFilter?.addEventListener("change", renderFormulaArchive);
