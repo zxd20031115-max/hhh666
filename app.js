@@ -1830,19 +1830,32 @@ function renderCourseMap() {
 }
 
 function renderChapterOptions() {
-  const book = textbooks[textbookFilter.value];
   chapterFilter.innerHTML = "";
-  book.chapters.forEach(chapter => {
-    const option = document.createElement("option");
-    option.value = chapter.id;
-    option.textContent = chapter.name;
-    chapterFilter.appendChild(option);
-  });
+  if (textbookFilter.value === "calculus" && Array.isArray(window.calculusTocMap)) {
+    window.calculusTocMap.forEach(chapter => {
+      const option = document.createElement("option");
+      option.value = String(chapter.chapter);
+      option.textContent = chapter.title;
+      chapterFilter.appendChild(option);
+    });
+  } else {
+    const book = textbooks[textbookFilter.value];
+    book.chapters.forEach(chapter => {
+      const option = document.createElement("option");
+      option.value = chapter.id;
+      option.textContent = chapter.name;
+      chapterFilter.appendChild(option);
+    });
+  }
   renderBookChapter();
 }
 
 function renderBookChapter() {
   const book = textbooks[textbookFilter.value];
+  if (textbookFilter.value === "calculus" && Array.isArray(window.calculusTocMap) && window.calculusFormulaArchive) {
+    renderCalculusArchiveChapter();
+    return;
+  }
   const chapter = book.chapters.find(item => item.id === chapterFilter.value) || book.chapters[0];
   bookNote.innerHTML = `<strong>${book.title}</strong><span>${book.author}</span>`;
   formulaList.innerHTML = "";
@@ -1861,6 +1874,44 @@ function renderBookChapter() {
     card.innerHTML = `<strong>${title}</strong><p>${body}</p>`;
     theoremList.appendChild(card);
   });
+}
+
+function renderCalculusArchiveChapter() {
+  const selectedChapter = Number(chapterFilter.value || 1);
+  const tocChapter = window.calculusTocMap.find(chapter => chapter.chapter === selectedChapter) || window.calculusTocMap[0];
+  const items = decorateArchiveItems(archiveItems()).filter(item => item.chapterIndex === tocChapter.chapter);
+  const formulaItems = items.filter(item => item.type !== "theorem");
+  const theoremItems = items.filter(item => item.type === "theorem");
+  bookNote.innerHTML = `
+    <strong>${escapeHtml(tocChapter.title)}</strong>
+    <span>按你提供的日本教材目录排序；每条下面附同济高数第七版对照。当前章共 ${items.length} 条。</span>
+  `;
+  formulaList.innerHTML = formulaItems.map(item => renderArchiveFormulaCard(item)).join("");
+  theoremList.innerHTML = theoremItems.map(item => renderArchiveFormulaCard(item, true)).join("");
+  if (!formulaItems.length) formulaList.innerHTML = `<p class="empty-note">这一章暂时没有公式或定义条目。</p>`;
+  if (!theoremItems.length) theoremList.innerHTML = `<p class="empty-note">这一章暂时没有定理条目。</p>`;
+}
+
+function renderArchiveFormulaCard(item, isTheorem = false) {
+  const aliases = (item.aliases || []).map(alias => `<span>${escapeHtml(alias)}</span>`).join("");
+  const tags = (item.tags || []).map(tag => `<span>${escapeHtml(tag)}</span>`).join("");
+  return `
+    <div class="formula-card archive-inline-card ${isTheorem ? "theorem-card" : ""}">
+      <div class="archive-card-head">
+        <span class="archive-type archive-type-${escapeHtml(item.type)}">${archiveTypeLabel(item.type)}</span>
+        <small>${escapeHtml(item.tocNo)} ${escapeHtml(item.tocJp)}</small>
+      </div>
+      <strong>${escapeHtml(item.name)}</strong>
+      ${aliases ? `<div class="archive-aliases">${aliases}</div>` : ""}
+      <p>${escapeHtml(item.statement || "")}</p>
+      ${item.formula ? `<div class="math-display">${latexToMathHtml(item.formula)}</div>` : ""}
+      <div class="archive-map">
+        <span>${escapeHtml(item.tocCn || "中文对照待补")}</span>
+        <span>${escapeHtml(item.tongji || "同济对照待补")}</span>
+      </div>
+      ${tags ? `<div class="archive-tags">${tags}</div>` : ""}
+    </div>
+  `;
 }
 
 const graphExamples = [
@@ -2433,6 +2484,144 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+function latexToMathHtml(value) {
+  let text = String(value || "")
+    .replace(/\\left|\\right/g, "")
+    .replace(/\\qquad|\\quad/g, "   ")
+    .replace(/\\,/g, " ")
+    .replace(/\\;/g, " ")
+    .replace(/\\!/g, "");
+  text = renderLatexCommands(text);
+  text = escapeHtml(text)
+    .replaceAll("?FRO?", '<span class="math-frac"><span>')
+    .replaceAll("?FRM?", '</span><span>')
+    .replaceAll("?FRC?", '</span></span>')
+    .replaceAll("?SQO?", '<span class="math-sqrt"><span>')
+    .replaceAll("?SQC?", '</span></span>')
+    .replaceAll("?SPO?", "<sup>")
+    .replaceAll("?SPC?", "</sup>")
+    .replaceAll("?SBO?", "<sub>")
+    .replaceAll("?SBC?", "</sub>")
+    .replaceAll("?OPO?", '<span class="math-op">')
+    .replaceAll("?OPC?", "</span>")
+    .replaceAll("?LMO?", '<span class="math-limit">')
+    .replaceAll("?LMC?", "</span>")
+    .replaceAll("?INO?", '<span class="math-integral">')
+    .replaceAll("?INC?", "</span>");
+  return text
+    .replace(/\n/g, "<br>")
+    .replace(/\s{2,}/g, match => "&nbsp;".repeat(Math.min(match.length, 6)));
+}
+
+function renderLatexCommands(text) {
+  let output = text;
+  output = replaceTwoArgCommand(output, "\\frac", (top, bottom) => `?FRO?${renderLatexCommands(top)}?FRM?${renderLatexCommands(bottom)}?FRC?`);
+  output = replaceOneArgCommand(output, "\\sqrt", body => `?SQO?${renderLatexCommands(body)}?SQC?`);
+  output = replaceTextCommand(output);
+  output = replaceOperators(output);
+  output = replaceScripts(output);
+  return replaceLatexSymbols(output);
+}
+
+function replaceOneArgCommand(text, command, makeHtml) {
+  let result = text;
+  let index = result.indexOf(command);
+  while (index !== -1) {
+    const first = readBrace(result, index + command.length);
+    if (!first) break;
+    result = result.slice(0, index) + makeHtml(first.value) + result.slice(first.end);
+    index = result.indexOf(command, index + 1);
+  }
+  return result;
+}
+
+function replaceTwoArgCommand(text, command, makeHtml) {
+  let result = text;
+  let index = result.indexOf(command);
+  while (index !== -1) {
+    const first = readBrace(result, index + command.length);
+    const second = first ? readBrace(result, first.end) : null;
+    if (!first || !second) break;
+    result = result.slice(0, index) + makeHtml(first.value, second.value) + result.slice(second.end);
+    index = result.indexOf(command, index + 1);
+  }
+  return result;
+}
+
+function readBrace(text, start) {
+  let i = start;
+  while (text[i] === " ") i += 1;
+  if (text[i] !== "{") return null;
+  let depth = 0;
+  for (let j = i; j < text.length; j += 1) {
+    if (text[j] === "{") depth += 1;
+    if (text[j] === "}") depth -= 1;
+    if (depth === 0) return { value: text.slice(i + 1, j), end: j + 1 };
+  }
+  return null;
+}
+
+function replaceTextCommand(text) {
+  let result = text;
+  let index = result.indexOf("\\text");
+  while (index !== -1) {
+    const body = readBrace(result, index + 5);
+    if (!body) break;
+    result = result.slice(0, index) + body.value + result.slice(body.end);
+    index = result.indexOf("\\text", index + body.value.length);
+  }
+  return result;
+}
+
+function readScriptValue(text, start) {
+  if (text[start] === "{") {
+    const body = readBrace(text, start);
+    return body ? { value: body.value, end: body.end } : null;
+  }
+  const match = text.slice(start).match(/^(\\[A-Za-z]+|[A-Za-z0-9+\-=(),.∞]+)/);
+  if (!match) return null;
+  return { value: match[0], end: start + match[0].length };
+}
+
+function replaceScripts(text) {
+  let result = "";
+  for (let i = 0; i < text.length; i += 1) {
+    if (text[i] === "^" || text[i] === "_") {
+      const script = readScriptValue(text, i + 1);
+      if (script) {
+        const open = text[i] === "^" ? "?SPO?" : "?SBO?";
+        const close = text[i] === "^" ? "?SPC?" : "?SBC?";
+        result += `${open}${renderLatexCommands(script.value)}${close}`;
+        i = script.end - 1;
+        continue;
+      }
+    }
+    result += text[i];
+  }
+  return result;
+}
+
+function replaceOperators(text) {
+  return text
+    .replace(/\\lim(?:_\{([^}]*)\}|_([A-Za-z0-9\\+\-=<>∞]+))?/g, (_, braced, plain) => `?OPO?lim${braced || plain ? `?LMO?${renderLatexCommands(braced || plain)}?LMC?` : ""}?OPC?`)
+    .replace(/\\sum(?:_\{([^}]*)\}|_([A-Za-z0-9\\+\-=<>∞]+))?(?:\^\{([^}]*)\}|\^([A-Za-z0-9\\+\-=<>∞]+))?/g, (_, sub1, sub2, sup1, sup2) => `?OPO?Σ${sup1 || sup2 ? `?SPO?${renderLatexCommands(sup1 || sup2)}?SPC?` : ""}${sub1 || sub2 ? `?LMO?${renderLatexCommands(sub1 || sub2)}?LMC?` : ""}?OPC?`)
+    .replace(/\\int(?:_\{([^}]*)\}|_([A-Za-z0-9\\+\-=<>∞]+))?(?:\^\{([^}]*)\}|\^([A-Za-z0-9\\+\-=<>∞]+))?/g, (_, sub1, sub2, sup1, sup2) => `?INO?∫${sup1 || sup2 ? `?SPO?${renderLatexCommands(sup1 || sup2)}?SPC?` : ""}${sub1 || sub2 ? `?SBO?${renderLatexCommands(sub1 || sub2)}?SBC?` : ""}?INC?`);
+}
+
+function replaceLatexSymbols(text) {
+  const symbols = {
+    "\\alpha": "α", "\\beta": "β", "\\gamma": "γ", "\\delta": "δ", "\\epsilon": "ε", "\\varepsilon": "ε",
+    "\\lambda": "λ", "\\mu": "μ", "\\pi": "π", "\\sigma": "σ", "\\theta": "θ", "\\omega": "ω",
+    "\\partial": "∂", "\\nabla": "∇", "\\infty": "∞", "\\to": "→", "\\rightarrow": "→", "\\leftarrow": "←",
+    "\\Longrightarrow": "⟹", "\\Rightarrow": "⇒", "\\Leftrightarrow": "⇔", "\\leq": "≤", "\\geq": "≥",
+    "\\le": "≤", "\\ge": "≥", "\\neq": "≠", "\\ne": "≠", "\\cdots": "⋯", "\\ldots": "…", "\\cdot": "·", "\\times": "×", "\\pm": "±",
+    "\\mp": "∓", "\\in": "∈", "\\notin": "∉", "\\subset": "⊂", "\\subseteq": "⊆", "\\cup": "∪", "\\cap": "∩",
+    "\\forall": "∀", "\\exists": "∃", "\\sin": "sin", "\\cos": "cos", "\\tan": "tan", "\\log": "log",
+    "\\ln": "ln", "\\exp": "exp", "\\max": "max", "\\min": "min"
+  };
+  return Object.entries(symbols).reduce((current, [from, to]) => current.replaceAll(from, to), text);
+}
+
 function archiveTypeLabel(type) {
   return {
     definition: "\u5b9a\u4e49",
@@ -2660,9 +2849,9 @@ proofChapterFilter.addEventListener("change", renderProofTrainer);
 examSubjectFilter.addEventListener("change", renderExamOptions);
 examChapterFilter.addEventListener("change", renderExamBank);
 examTypeFilter.addEventListener("change", renderExamBank);
-formulaChapterFilter.addEventListener("change", renderFormulaArchive);
-formulaTypeFilter.addEventListener("change", renderFormulaArchive);
-formulaSearch.addEventListener("input", renderFormulaArchive);
+formulaChapterFilter?.addEventListener("change", renderFormulaArchive);
+formulaTypeFilter?.addEventListener("change", renderFormulaArchive);
+formulaSearch?.addEventListener("input", renderFormulaArchive);
 customSubject.addEventListener("change", syncCustomChapterOptions);
 saveCustomProblem.addEventListener("click", saveCustomProblemFromForm);
 exportProblemsBtn.addEventListener("click", exportCustomProblems);
@@ -2711,8 +2900,6 @@ renderDomesticMap();
 renderCourseGuide();
 renderProofOptions();
 renderExamOptions();
-renderFormulaArchiveOptions();
-renderFormulaArchive();
 syncCustomChapterOptions();
 renderCustomProblemList();
 sourceText.value = sample;
