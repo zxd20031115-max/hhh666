@@ -1968,6 +1968,57 @@ function renderTexFormula(value) {
   return `<code>${escapeHtml(tex)}</code>`;
 }
 
+function renderInlineTex(value) {
+  if (!window.katex?.renderToString) return escapeHtml(value);
+  return window.katex.renderToString(value, {
+    displayMode: false,
+    throwOnError: false,
+    strict: false,
+    trust: true
+  });
+}
+
+function renderProblemText(value) {
+  const raw = String(value || "");
+  const htmlChunks = [];
+  const placeholders = [];
+  const htmlPlaceholders = [];
+  const protectHtml = raw.replace(/<\/?[^>]+>/g, tag => {
+    const key = `@@HTML${htmlPlaceholders.length}@@`;
+    htmlPlaceholders.push([key, tag]);
+    return key;
+  });
+  const pushMath = tex => {
+    const key = `@@MATH${placeholders.length}@@`;
+    placeholders.push([key, renderInlineTex(tex)]);
+    return key;
+  };
+
+  let text = protectHtml
+    .replace(/lim_\{([^}]+)\}/g, (_, sub) => pushMath(`\\lim_{${sub.replace(/→/g, "\\to ")}}`))
+    .replace(/∑_\{([^}]+)\}\^([∞\\A-Za-z0-9{}]+)/g, (_, sub, sup) => pushMath(`\\sum_{${sub}}^{${sup.replace(/∞/g, "\\infty")}}`))
+    .replace(/∫_([0-9A-Za-z]+)\^([0-9A-Za-z∞]+)\s*([^，。；、]*)/g, (_, low, high, body) => pushMath(`\\int_{${low}}^{${high.replace(/∞/g, "\\infty")}} ${plainMathToTex(body.trim())}`))
+    .replace(/∫\s*([^，。；、]*)/g, (_, body) => pushMath(`\\int ${plainMathToTex(body.trim())}`))
+    .replace(/([A-Za-zα-ωΑ-Ω]+)_\{([^}]+)\}/g, (_, base, sub) => pushMath(`${base}_{${sub}}`))
+    .replace(/([A-Za-zα-ωΑ-Ω]+)_([A-Za-z0-9]+)/g, (_, base, sub) => pushMath(`${base}_{${sub}}`))
+    .replace(/([A-Za-zα-ωΑ-Ω0-9()]+)\^([A-Za-z0-9]+)/g, (_, base, sup) => pushMath(`${base}^{${sup}}`))
+    .replace(/([A-Za-z0-9_{}^+\-]+)\/([A-Za-z0-9_{}^+\-]+)/g, (_, top, bottom) => pushMath(`\\frac{${plainMathToTex(top)}}{${plainMathToTex(bottom)}}`));
+
+  text.split(/(@@MATH\d+@@)/g).forEach(chunk => {
+    const found = placeholders.find(([key]) => key === chunk);
+    htmlChunks.push(found ? found[1] : escapeHtml(chunk));
+  });
+  return htmlPlaceholders.reduce((html, [key, tag]) => html.replaceAll(key, tag), htmlChunks.join(""));
+}
+
+function plainMathToTex(value) {
+  return String(value || "")
+    .replace(/∞/g, "\\infty")
+    .replace(/→/g, "\\to ")
+    .replace(/([A-Za-zα-ωΑ-Ω]+)_([A-Za-z0-9]+)/g, "$1_{$2}")
+    .replace(/([A-Za-zα-ωΑ-Ω0-9()]+)\^([A-Za-z0-9]+)/g, "$1^{$2}");
+}
+
 const graphExamples = [
   { expr: "x^3 - 3*x\nx^2 - 1", range: [-4, 4], yRange: [-8, 8], tangent: 1, integral: "-1,2" },
   { expr: "sin(x)\ncos(x)", range: [-6.28, 6.28], yRange: [-2, 2], tangent: 0.8, integral: "0,3.14" },
@@ -2479,20 +2530,20 @@ function renderExamBank() {
   const problems = mergedProblems.filter(problem => selectedType === "all" || problem.type === selectedType);
 
   examBank.innerHTML = problems.map((problem, index) => {
-    const answerSteps = problem.answer.map((step, stepIndex) => `<li><b>Step ${stepIndex + 1}</b><span>${step}</span></li>`).join("");
+    const answerSteps = problem.answer.map((step, stepIndex) => `<li><b>Step ${stepIndex + 1}</b><span>${renderProblemText(step)}</span></li>`).join("");
     return `
       <article class="exam-card ${problem.customId ? "custom-exam-card" : ""}">
         <div class="exam-meta">
           <span>${problem.type}</span>
           <small>${chapter.chapter} · ${problem.customId ? "我的题" : `题 ${index + 1}`}</small>
         </div>
-        <h3>${problem.title}</h3>
-        <p class="exam-stem">${problem.stem}</p>
+        <h3>${renderProblemText(problem.title)}</h3>
+        <p class="exam-stem">${renderProblemText(problem.stem)}</p>
         <div class="exam-actions">
           <button type="button" data-action="hint">看提示</button>
           <button type="button" data-action="answer">看详细答案</button>
         </div>
-        <div class="exam-hint">${problem.hint}</div>
+        <div class="exam-hint">${renderProblemText(problem.hint)}</div>
         <ol class="exam-answer">${answerSteps}</ol>
       </article>
     `;

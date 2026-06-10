@@ -1281,6 +1281,23 @@ meter {
   min-height: 54px;
 }
 
+.exam-card .katex {
+  font-size: 1.04em;
+  line-height: 1.25;
+}
+
+.exam-card .katex-display {
+  margin: 6px 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.exam-stem .katex,
+.exam-hint .katex,
+.exam-answer .katex {
+  white-space: nowrap;
+}
+
 .mini-plot {
   margin-top: 10px;
   padding: 8px;
@@ -1356,7 +1373,9 @@ meter {
 
 .exam-answer li {
   display: grid;
-  gap: 4px;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
   padding: 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -1365,9 +1384,11 @@ meter {
 
 .exam-answer b {
   color: var(--accent);
+  white-space: nowrap;
 }
 
 .exam-answer span {
+  min-width: 0;
   color: var(--muted);
   line-height: 1.6;
 }
