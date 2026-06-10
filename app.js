@@ -1904,7 +1904,7 @@ function renderArchiveFormulaCard(item, isTheorem = false) {
       <strong>${escapeHtml(item.name)}</strong>
       ${aliases ? `<div class="archive-aliases">${aliases}</div>` : ""}
       <p>${escapeHtml(item.statement || "")}</p>
-      ${item.formula ? `<div class="math-display">${latexToMathHtml(item.formula)}</div>` : ""}
+      ${item.formula ? `<div class="math-display tex-formula">${renderTexFormula(item.formula)}</div>` : ""}
       <div class="archive-map">
         <span>${escapeHtml(item.tocCn || "中文对照待补")}</span>
         <span>${escapeHtml(item.tongji || "同济对照待补")}</span>
@@ -1912,6 +1912,23 @@ function renderArchiveFormulaCard(item, isTheorem = false) {
       ${tags ? `<div class="archive-tags">${tags}</div>` : ""}
     </div>
   `;
+}
+
+function normalizeFormulaTex(value) {
+  return String(value || "");
+}
+
+function renderTexFormula(value) {
+  const tex = normalizeFormulaTex(value);
+  if (window.katex?.renderToString) {
+    return window.katex.renderToString(tex, {
+      displayMode: true,
+      throwOnError: false,
+      strict: false,
+      trust: true
+    });
+  }
+  return `<code>${escapeHtml(tex)}</code>`;
 }
 
 const graphExamples = [
@@ -2309,7 +2326,16 @@ function endGraphDrag() {
 }
 
 function renderDomesticMap() {
-  const rows = domesticSectionMaps[domesticFilter.value];
+  const rows = domesticFilter.value === "calculus" && Array.isArray(window.calculusTocMap)
+    ? window.calculusTocMap.map(chapter => ({
+      jp: chapter.title,
+      cnChapter: "按日本教材目录顺序；右栏为同济高数第七版对照",
+      sections: chapter.sections.map(section => [
+        `${section.no} ${section.jp}`,
+        `${section.cn}｜${section.tongji}`
+      ])
+    }))
+    : domesticSectionMaps[domesticFilter.value];
   domesticMap.innerHTML = "";
   rows.forEach(row => {
     const card = document.createElement("article");
