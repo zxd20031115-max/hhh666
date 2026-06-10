@@ -1610,6 +1610,16 @@ function augmentExamProblems() {
 
 augmentExamProblems();
 
+function applyCalculusTongjiPractice() {
+  if (!Array.isArray(window.calculusTongjiPractice)) return;
+  examProblems.calculus = window.calculusTongjiPractice.map((chapter, index) => ({
+    ...chapter,
+    chapter: window.calculusTocMap?.[index]?.title || chapter.chapter
+  }));
+}
+
+applyCalculusTongjiPractice();
+
 const stopwords = new Set("の に を は が と で から まで こと ため する ある いる これ それ 的 了 和 是 在 与 及 或 一个 一种 进行 可以 需要 通过 说明 重点 课程 作业 要求".split(" "));
 const sensitiveRules = [
   { name: "个人信息", pattern: /(\d{11}|身份证|住址|家庭地址|银行卡|手机号|電話番号|住所|学生番号)/g, level: "danger", text: "材料里可能包含个人隐私或学籍信息，交给外部 AI 前应删除或打码。" },
