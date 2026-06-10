@@ -444,6 +444,155 @@ meter {
   line-height: 1.55;
 }
 
+.archive-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--muted);
+}
+
+.archive-stats span {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfe;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.archive-stats b {
+  color: var(--accent);
+}
+
+.formula-archive-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(320px, 1fr));
+  gap: 12px;
+}
+
+.formula-archive-card {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.archive-card-head,
+.archive-card-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.archive-card-head small {
+  color: var(--muted);
+  line-height: 1.45;
+  text-align: right;
+}
+
+.archive-type {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #eef7f4;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.archive-type-theorem {
+  background: #fff5df;
+  color: #8a5a00;
+}
+
+.archive-type-formula {
+  background: #eef3ff;
+  color: #305e9c;
+}
+
+.archive-type-method {
+  background: #f5efff;
+  color: #6d4aa0;
+}
+
+.formula-archive-card h3 {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.35;
+}
+
+.formula-archive-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.archive-map {
+  display: grid;
+  gap: 6px;
+  padding: 9px 10px;
+  border: 1px solid #d8e8e4;
+  border-radius: 8px;
+  background: #f7fbfa;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.archive-map span:first-child {
+  color: var(--accent);
+  font-weight: 900;
+}
+
+.archive-aliases,
+.archive-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.archive-aliases span,
+.archive-tags span {
+  padding: 4px 7px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfe;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.formula-latex {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0;
+  padding: 10px 11px;
+  border: 1px solid #d8e8e4;
+  border-radius: 8px;
+  background: #f7fbfa;
+  color: var(--ink);
+  font-family: "Cambria Math", "Times New Roman", "Consolas", serif;
+  font-size: 15px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.archive-card-foot button {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
 .graph-tool {
   display: grid;
   grid-template-columns: minmax(260px, .78fr) minmax(420px, 1.42fr);
@@ -1320,6 +1469,7 @@ meter {
   .proof-layout,
   .quiz-list,
   .formula-layout,
+  .formula-archive-grid,
   .domestic-map,
   .exam-bank,
   .guide-map,

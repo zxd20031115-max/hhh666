@@ -15,6 +15,9 @@ const proofChapterFilter = document.querySelector("#proofChapterFilter");
 const examSubjectFilter = document.querySelector("#examSubjectFilter");
 const examChapterFilter = document.querySelector("#examChapterFilter");
 const examTypeFilter = document.querySelector("#examTypeFilter");
+const formulaChapterFilter = document.querySelector("#formulaChapterFilter");
+const formulaTypeFilter = document.querySelector("#formulaTypeFilter");
+const formulaSearch = document.querySelector("#formulaSearch");
 const customSubject = document.querySelector("#customSubject");
 const customChapter = document.querySelector("#customChapter");
 const customType = document.querySelector("#customType");
@@ -62,6 +65,8 @@ const domesticMap = document.querySelector("#domesticMap");
 const courseGuide = document.querySelector("#courseGuide");
 const proofTrainer = document.querySelector("#proofTrainer");
 const examBank = document.querySelector("#examBank");
+const formulaArchiveStats = document.querySelector("#formulaArchiveStats");
+const formulaArchiveGrid = document.querySelector("#formulaArchiveGrid");
 const customProblemList = document.querySelector("#customProblemList");
 const functionCanvas = document.querySelector("#functionCanvas");
 const graphTooltip = document.querySelector("#graphTooltip");
@@ -2374,6 +2379,188 @@ function renderExamBank() {
   });
 }
 
+function archiveItems() {
+  const archive = window.calculusFormulaArchive;
+  if (!archive || !Array.isArray(archive.chapters)) return [];
+  return archive.chapters.flatMap(chapter => chapter.items.map(item => ({
+    ...item,
+    chapterIndex: chapter.index,
+    chapterName: chapter.chapter,
+    sourceFile: chapter.source_file
+  })));
+}
+
+function tocSections() {
+  return Array.isArray(window.calculusTocMap)
+    ? window.calculusTocMap.flatMap(chapter => chapter.sections.map(section => ({
+      ...section,
+      chapter: chapter.chapter,
+      chapterTitle: chapter.title
+    })))
+    : [];
+}
+
+function tocForItem(item) {
+  const sections = tocSections().filter(section => section.chapter === item.chapterIndex);
+  return sections.find(section => (section.matches || []).includes(item.section))
+    || sections.find(section => item.section && section.jp && item.section.includes(section.jp))
+    || sections[0]
+    || null;
+}
+
+function decorateArchiveItems(items) {
+  return items
+    .map(item => {
+      const toc = tocForItem(item);
+      return {
+        ...item,
+        tocNo: toc?.no || "",
+        tocJp: toc?.jp || item.section || "",
+        tocCn: toc?.cn || "",
+        tongji: toc?.tongji || "",
+        tocOrder: toc ? Number(`${toc.chapter}.${String(toc.no).split(".")[1] || 0}`) : Number(`${item.chapterIndex}.99`)
+      };
+    })
+    .sort((a, b) => a.tocOrder - b.tocOrder || a.chapterIndex - b.chapterIndex || String(a.section).localeCompare(String(b.section)));
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function archiveTypeLabel(type) {
+  return {
+    definition: "\u5b9a\u4e49",
+    theorem: "\u5b9a\u7406",
+    formula: "\u516c\u5f0f",
+    method: "\u65b9\u6cd5"
+  }[type] || "\u77e5\u8bc6\u70b9";
+}
+
+function renderFormulaArchiveOptions() {
+  const archive = window.calculusFormulaArchive;
+  const toc = window.calculusTocMap;
+  if (!formulaChapterFilter) return;
+  formulaChapterFilter.innerHTML = `<option value="all">\u5168\u90e8\u7ae0\u8282</option>`;
+  const chapters = Array.isArray(toc) ? toc : archive?.chapters || [];
+  chapters.forEach(chapter => {
+    const option = document.createElement("option");
+    option.value = String(chapter.chapter || chapter.index);
+    option.textContent = chapter.title || chapter.chapter;
+    formulaChapterFilter.appendChild(option);
+  });
+}
+
+function renderFormulaArchive() {
+  if (!formulaArchiveGrid || !formulaArchiveStats) return;
+  const allItems = decorateArchiveItems(archiveItems());
+  if (!allItems.length) {
+    formulaArchiveStats.textContent = "\u8fd8\u6ca1\u6709\u8bfb\u53d6\u5230\u516c\u5f0f\u6574\u7406\u6570\u636e\u3002";
+    formulaArchiveGrid.innerHTML = "";
+    return;
+  }
+
+  const chapterValue = formulaChapterFilter.value || "all";
+  const typeValue = formulaTypeFilter.value || "all";
+  const query = (formulaSearch.value || "").trim().toLowerCase();
+  const filtered = allItems.filter(item => {
+    const matchChapter = chapterValue === "all" || String(item.chapterIndex) === chapterValue;
+    const matchType = typeValue === "all" || item.type === typeValue;
+    const haystack = [
+      item.chapterName,
+      item.section,
+      item.tocNo,
+      item.tocJp,
+      item.tocCn,
+      item.tongji,
+      item.type,
+      item.name,
+      item.statement,
+      item.formula,
+      ...(item.aliases || []),
+      ...(item.tags || [])
+    ].join(" ").toLowerCase();
+    return matchChapter && matchType && (!query || haystack.includes(query));
+  });
+
+  const typeCounts = allItems.reduce((counts, item) => {
+    counts[item.type] = (counts[item.type] || 0) + 1;
+    return counts;
+  }, {});
+  formulaArchiveStats.innerHTML = `
+    <span>\u603b\u8ba1 <b>${allItems.length}</b> \u6761</span>
+    <span>\u5f53\u524d\u663e\u793a <b>${filtered.length}</b> \u6761</span>
+    <span>\u5b9a\u4e49 ${typeCounts.definition || 0}</span>
+    <span>\u5b9a\u7406 ${typeCounts.theorem || 0}</span>
+    <span>\u516c\u5f0f ${typeCounts.formula || 0}</span>
+    <span>\u65b9\u6cd5 ${typeCounts.method || 0}</span>
+  `;
+
+  formulaArchiveGrid.innerHTML = filtered.map(item => {
+    const aliases = (item.aliases || []).map(alias => `<span>${escapeHtml(alias)}</span>`).join("");
+    const tags = (item.tags || []).map(tag => `<span>${escapeHtml(tag)}</span>`).join("");
+    return `
+      <article class="formula-archive-card">
+        <div class="archive-card-head">
+          <span class="archive-type archive-type-${escapeHtml(item.type)}">${archiveTypeLabel(item.type)}</span>
+          <small>${escapeHtml(item.chapterName)} / ${escapeHtml(item.tocNo)} ${escapeHtml(item.tocJp)}</small>
+        </div>
+        <h3>${escapeHtml(item.name)}</h3>
+        ${aliases ? `<div class="archive-aliases">${aliases}</div>` : ""}
+        <p>${escapeHtml(item.statement || "")}</p>
+        <div class="archive-map">
+          <span>${escapeHtml(item.tocCn || "\u4e2d\u6587\u5bf9\u7167\u5f85\u8865")}</span>
+          <span>${escapeHtml(item.tongji || "\u540c\u6d4e\u5bf9\u7167\u5f85\u8865")}</span>
+        </div>
+        <pre class="formula-latex"><code>${escapeHtml(item.formula || "")}</code></pre>
+        <div class="archive-card-foot">
+          <div class="archive-tags">${tags}</div>
+          <button type="button" data-copy-formula="${escapeHtml(item.id)}">\u590d\u5236\u516c\u5f0f</button>
+        </div>
+      </article>
+    `;
+  }).join("");
+
+  if (!filtered.length) {
+    formulaArchiveGrid.innerHTML = `<p class="empty-note">\u6ca1\u6709\u627e\u5230\u5bf9\u5e94\u6761\u76ee\uff0c\u53ef\u4ee5\u6362\u4e00\u4e2a\u5173\u952e\u8bcd\u6216\u5207\u56de\u201c\u5168\u90e8\u7ae0\u8282\u201d\u3002</p>`;
+  }
+
+  formulaArchiveGrid.querySelectorAll("[data-copy-formula]").forEach(button => {
+    button.addEventListener("click", () => {
+      const item = filtered.find(row => row.id === button.dataset.copyFormula);
+      if (!item) return;
+      copyText(item.formula || "");
+      button.textContent = "\u5df2\u590d\u5236";
+      setTimeout(() => { button.textContent = "\u590d\u5236\u516c\u5f0f"; }, 1200);
+    });
+  });
+}
+
+function copyText(value) {
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(value).catch(() => fallbackCopyText(value));
+    return;
+  }
+  fallbackCopyText(value);
+}
+
+function fallbackCopyText(value) {
+  const textarea = document.createElement("textarea");
+  textarea.value = value;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand("copy");
+  textarea.remove();
+}
+
 function renderCourseGuide() {
   const guide = onlineCourseGuides[courseFilter.value];
   const strategy = guide.strategy
@@ -2473,6 +2660,9 @@ proofChapterFilter.addEventListener("change", renderProofTrainer);
 examSubjectFilter.addEventListener("change", renderExamOptions);
 examChapterFilter.addEventListener("change", renderExamBank);
 examTypeFilter.addEventListener("change", renderExamBank);
+formulaChapterFilter.addEventListener("change", renderFormulaArchive);
+formulaTypeFilter.addEventListener("change", renderFormulaArchive);
+formulaSearch.addEventListener("input", renderFormulaArchive);
 customSubject.addEventListener("change", syncCustomChapterOptions);
 saveCustomProblem.addEventListener("click", saveCustomProblemFromForm);
 exportProblemsBtn.addEventListener("click", exportCustomProblems);
@@ -2521,6 +2711,8 @@ renderDomesticMap();
 renderCourseGuide();
 renderProofOptions();
 renderExamOptions();
+renderFormulaArchiveOptions();
+renderFormulaArchive();
 syncCustomChapterOptions();
 renderCustomProblemList();
 sourceText.value = sample;
